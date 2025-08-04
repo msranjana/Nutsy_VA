@@ -78,6 +78,147 @@ body {
     transform: translateY(0);
 }
 
+.input-section {
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+#textInput {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 120px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 1rem;
+}
+
+#textInput::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#textInput:focus {
+    outline: none;
+    border-color: #26c6da;
+    box-shadow: 0 0 15px rgba(38, 198, 218, 0.3);
+}
+
+.controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#voiceSelect {
+    padding: 0.75rem 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.9rem;
+    backdrop-filter: blur(10px);
+    min-width: 200px;
+}
+
+#voiceSelect:focus {
+    outline: none;
+    border-color: #26c6da;
+}
+
+#voiceSelect option {
+    background: #1a237e;
+    color: white;
+}
+
+.generate-button {
+    background: linear-gradient(135deg, #00bcd4 0%, #26c6da 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px 0 rgba(0, 188, 212, 0.3);
+    flex: 1;
+    min-width: 150px;
+}
+
+.generate-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(0, 188, 212, 0.4);
+    background: linear-gradient(135deg, #26c6da 0%, #00acc1 100%);
+}
+
+.generate-button:active {
+    transform: translateY(0);
+}
+
+.generate-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.audio-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.audio-section h3 {
+    margin: 0 0 1rem 0;
+    color: #26c6da;
+    font-size: 1.2rem;
+}
+
+#audioPlayer {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+}
+
+.audio-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2rem;
+    color: #26c6da;
+}
+
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #26c6da;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
@@ -97,5 +238,25 @@ body {
     
     .icon {
         font-size: 3rem;
+    }
+    
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #voiceSelect {
+        min-width: unset;
+        width: 100%;
+    }
+    
+    .generate-button {
+        min-width: unset;
+        width: 100%;
+    }
+    
+    .audio-info {
+        flex-direction: column;
+        gap: 0.5rem;
     }
 }

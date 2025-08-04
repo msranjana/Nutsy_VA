@@ -12,13 +12,47 @@
             <div class="icon">
                 🎤
             </div>
-            <h1 class="title">Voice Agent Challenge - Day 1</h1>
+            <h1 class="title">Voice Agent Challenge - Day 3</h1>
             <p class="description">
-                Backend is ready with Flask, and this page is served through Python. More voice magic coming soon!
+                Enter text below and click generate to convert it to speech using our AI voice agent!
             </p>
-            <button class="cta-button" onclick="tryNow()">
-                Click to try right now
-            </button>
+            
+            <div class="input-section">
+                <textarea 
+                    id="textInput" 
+                    placeholder="Enter the text you want to convert to speech..."
+                    rows="4"
+                ></textarea>
+                
+                <div class="controls">
+                    <select id="voiceSelect">
+                        <option value="en-US-julia">Julia (US English)</option>
+                        <option value="en-US-natalie">Natalie (US English)</option>
+                        <option value="en-US-terrell">Terrell (US English)</option>
+                        <option value="en-UK-oliver">Oliver (UK English)</option>
+                    </select>
+                    
+                    <button class="generate-button" onclick="generateSpeech()">
+                        🎤 Generate Speech
+                    </button>
+                </div>
+            </div>
+            
+            <div id="audioSection" class="audio-section" style="display: none;">
+                <h3>Generated Audio:</h3>
+                <audio id="audioPlayer" controls>
+                    Your browser does not support the audio element.
+                </audio>
+                <div class="audio-info">
+                    <span id="audioLength"></span>
+                    <span id="characterCount"></span>
+                </div>
+            </div>
+            
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Generating speech...</p>
+            </div>
         </div>
     </div>
     <script src="/static/script.js"></script>
