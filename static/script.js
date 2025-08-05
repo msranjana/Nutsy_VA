@@ -130,3 +130,87 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Echo Bot Recording Functionality
+let mediaRecorder;
+let audioChunks =[];
+
+async function startRecording() {
+    try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 44100
+            } 
+        });
+        
+        // Create MediaRecorder instance
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        // Reset audio chunks
+        audioChunks = [];
+        
+        // Set up event handlers
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = () => {
+            // Create blob from chunks
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            
+            // Create URL and set up playback
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const playbackAudio = document.getElementById('playbackAudio');
+            playbackAudio.src = audioUrl;
+            
+            // Show playback section
+            document.getElementById('playbackSection').style.display = 'block';
+            
+            // Stop all tracks to release microphone
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        // Start recording
+        mediaRecorder.start(1000); // Collect data every second
+        
+        // Update UI
+        updateRecordingUI(true);
+        
+        console.log('Recording started');
+        
+    } catch (error) {
+        console.error('Error starting recording:', error);
+        alert('Could not access microphone. Please ensure you have granted microphone permissions and try again.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        updateRecordingUI(false);
+        console.log('Recording stopped');
+    }
+}
+
+function updateRecordingUI(isRecording) {
+    const startButton = document.getElementById('startRecording');
+    const stopButton = document.getElementById('stopRecording');
+    const recordingStatus = document.getElementById('recordingStatus');
+    
+    if (isRecording) {
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        recordingStatus.style.display = 'flex';
+    } else {
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        recordingStatus.style.display = 'none';
+    }
+}

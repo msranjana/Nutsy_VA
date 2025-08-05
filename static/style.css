@@ -4,6 +4,11 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: linear-gradient(135deg, #1a237e 0%, #283593 25%, #3949ab 50%, #5e35b1 75%, #7b1fa2 100%);
@@ -12,12 +17,17 @@ body {
     align-items: center;
     justify-content: center;
     color: white;
+    padding: 1rem 0;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
     width: 100%;
     max-width: 600px;
     padding: 2rem;
+    margin: 0 auto;
 }
 
 .content {
@@ -28,6 +38,8 @@ body {
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .icon {
@@ -96,6 +108,11 @@ body {
     min-height: 120px;
     backdrop-filter: blur(10px);
     margin-bottom: 1rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 #textInput::placeholder {
@@ -113,6 +130,7 @@ body {
     gap: 1rem;
     align-items: center;
     flex-wrap: wrap;
+    width: 100%;
 }
 
 #voiceSelect {
@@ -124,16 +142,24 @@ body {
     font-size: 0.9rem;
     backdrop-filter: blur(10px);
     min-width: 200px;
+    box-sizing: border-box;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
 }
 
 #voiceSelect:focus {
     outline: none;
     border-color: #26c6da;
+    box-shadow: 0 0 10px rgba(38, 198, 218, 0.3);
 }
 
 #voiceSelect option {
     background: #1a237e;
     color: white;
+    padding: 0.5rem;
 }
 
 .generate-button {
@@ -149,6 +175,13 @@ body {
     box-shadow: 0 4px 15px 0 rgba(0, 188, 212, 0.3);
     flex: 1;
     min-width: 150px;
+    box-sizing: border-box;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+    min-height: 44px; /* Minimum touch target size */
 }
 
 .generate-button:hover {
@@ -219,44 +252,471 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* Echo Bot Section Styles */
+.echo-bot-section {
+    margin-top: 3rem;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.echo-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #26c6da;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.echo-description {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.recording-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.record-button {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 160px;
+    box-sizing: border-box;
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+    min-height: 48px; /* Larger touch target for mobile */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.record-button.start {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+    color: white;
+    box-shadow: 0 4px 15px 0 rgba(76, 175, 80, 0.3);
+}
+
+.record-button.start:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(76, 175, 80, 0.4);
+    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+}
+
+.record-button.stop {
+    background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+    color: white;
+    box-shadow: 0 4px 15px 0 rgba(244, 67, 54, 0.3);
+}
+
+.record-button.stop:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(244, 67, 54, 0.4);
+    background: linear-gradient(135deg, #ef5350 0%, #f44336 100%);
+}
+
+.record-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.recording-status {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #f44336;
+    font-weight: 600;
+}
+
+.pulse {
+    width: 12px;
+    height: 12px;
+    background: #f44336;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+}
+
+.playback-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.playback-section h3 {
+    margin: 0 0 1rem 0;
+    color: #26c6da;
+    font-size: 1.2rem;
+}
+
+#playbackAudio {
+    width: 100%;
+    border-radius: 8px;
+}
+
+/* Tablet styles */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 90%;
+        padding: 1.5rem;
+    }
+    
+    .content {
+        padding: 2.5rem 2rem;
+    }
+    
+    .title {
+        font-size: 2.2rem;
+    }
+    
+    .controls {
+        gap: 0.8rem;
+    }
+    
+    #voiceSelect {
+        min-width: 180px;
+    }
+}
+
+/* Mobile landscape and small tablets */
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
+        max-width: 95%;
     }
     
     .content {
         padding: 2rem 1.5rem;
+        border-radius: 15px;
     }
     
     .title {
         font-size: 2rem;
+        margin-bottom: 1rem;
     }
     
     .description {
         font-size: 1rem;
+        margin-bottom: 2rem;
     }
     
     .icon {
         font-size: 3rem;
+        margin-bottom: 1rem;
     }
     
     .controls {
         flex-direction: column;
         align-items: stretch;
+        gap: 1rem;
     }
     
     #voiceSelect {
         min-width: unset;
         width: 100%;
+        padding: 1rem;
+        font-size: 1rem;
     }
     
     .generate-button {
         min-width: unset;
         width: 100%;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+    }
+    
+    #textInput {
+        padding: 1rem;
+        font-size: 1rem;
+        min-height: 100px;
     }
     
     .audio-info {
         flex-direction: column;
         gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .echo-bot-section {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        border-radius: 12px;
+    }
+    
+    .echo-title {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .echo-description {
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .recording-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .record-button {
+        min-width: unset;
+        width: 100%;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+    }
+    
+    .audio-section,
+    .playback-section {
+        padding: 1.2rem;
+        border-radius: 10px;
+    }
+    
+    .audio-section h3,
+    .playback-section h3 {
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+}
+
+/* Mobile portrait */
+@media (max-width: 480px) {
+    body {
+        padding: 0.5rem;
+    }
+    
+    .container {
+        padding: 0.5rem;
+        max-width: 100%;
+    }
+    
+    .content {
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        margin: 0;
+    }
+    
+    .icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .title {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+        line-height: 1.1;
+    }
+    
+    .description {
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+    
+    #textInput {
+        padding: 0.8rem;
+        font-size: 0.95rem;
+        min-height: 90px;
+        border-radius: 10px;
+    }
+    
+    #voiceSelect {
+        padding: 0.8rem;
+        font-size: 0.95rem;
+        border-radius: 8px;
+    }
+    
+    .generate-button {
+        padding: 0.8rem 1.2rem;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+    
+    .echo-bot-section {
+        margin-top: 1.5rem;
+        padding: 1.2rem 1rem;
+        border-radius: 10px;
+    }
+    
+    .echo-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .echo-description {
+        font-size: 0.9rem;
+        margin-bottom: 1.2rem;
+    }
+    
+    .record-button {
+        padding: 0.8rem 1.2rem;
+        font-size: 1rem;
+        border-radius: 10px;
+    }
+    
+    .recording-indicator {
+        font-size: 0.9rem;
+        gap: 0.8rem;
+    }
+    
+    .pulse {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .audio-section,
+    .playback-section {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+    
+    .audio-section h3,
+    .playback-section h3 {
+        font-size: 1rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .spinner {
+        width: 30px;
+        height: 30px;
+        border-width: 2px;
+    }
+    
+    .loading p {
+        font-size: 0.9rem;
+    }
+    
+    .audio-info span {
+        font-size: 0.85rem;
+    }
+}
+
+/* Very small mobile devices */
+@media (max-width: 320px) {
+    .content {
+        padding: 1rem 0.8rem;
+    }
+    
+    .title {
+        font-size: 1.6rem;
+    }
+    
+    .echo-title {
+        font-size: 1.3rem;
+    }
+    
+    .description,
+    .echo-description {
+        font-size: 0.85rem;
+    }
+    
+    #textInput {
+        min-height: 80px;
+        padding: 0.7rem;
+    }
+    
+    .generate-button,
+    .record-button {
+        padding: 0.7rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .echo-bot-section {
+        padding: 1rem 0.8rem;
+    }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 600px) and (orientation: landscape) {
+    body {
+        align-items: flex-start;
+        padding-top: 1rem;
+    }
+    
+    .container {
+        margin: 0 auto;
+    }
+    
+    .content {
+        padding: 1.5rem;
+    }
+    
+    .icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .title {
+        font-size: 1.8rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .description {
+        margin-bottom: 1.5rem;
+    }
+    
+    .echo-bot-section {
+        margin-top: 1.5rem;
+        padding: 1.2rem;
+    }
+    
+    .echo-title {
+        font-size: 1.4rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .echo-description {
+        margin-bottom: 1.2rem;
+    }
+}
+
+/* High DPI / Retina displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .content {
+        border-width: 0.5px;
+    }
+    
+    .audio-section,
+    .playback-section,
+    .echo-bot-section {
+        border-width: 0.5px;
     }
 }
