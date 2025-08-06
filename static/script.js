@@ -133,7 +133,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Echo Bot Recording Functionality
 let mediaRecorder;
-let audioChunks =[];
+let audioChunks = [];
+let audioBlob;
+let audioURL;
 
 async function startRecording() {
     try {
@@ -163,12 +165,12 @@ async function startRecording() {
         
         mediaRecorder.onstop = () => {
             // Create blob from chunks
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             
             // Create URL and set up playback
-            const audioUrl = URL.createObjectURL(audioBlob);
+            audioURL = URL.createObjectURL(audioBlob);
             const playbackAudio = document.getElementById('playbackAudio');
-            playbackAudio.src = audioUrl;
+            playbackAudio.src = audioURL;
             
             // Show playback section
             document.getElementById('playbackSection').style.display = 'block';
@@ -213,4 +215,85 @@ function updateRecordingUI(isRecording) {
         stopButton.disabled = true;
         recordingStatus.style.display = 'none';
     }
+}
+
+// Upload functionality
+async function uploadRecording() {
+    if (!audioBlob) {
+        showUploadStatus('error', 'No recording available', 'Please record audio first');
+        return;
+    }
+
+    const uploadBtn = document.getElementById('uploadButton');
+    
+    try {
+        // Disable upload button and show uploading status
+        uploadBtn.disabled = true;
+        showUploadStatus('uploading', 'Uploading audio...', 'Please wait');
+
+        // Create FormData and append the audio blob
+        const formData = new FormData();
+        // Use the original blob directly instead of creating a File object
+        formData.append('file', audioBlob, 'recording.webm');
+
+        // Send to server
+        const response = await fetch('/upload-audio', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        
+        // Show success message
+        showUploadStatus('success', 'Upload successful!', `File: ${result.filename} (${formatFileSize(result.size)})`);
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        showUploadStatus('error', 'Upload failed', error.message);
+    } finally {
+        // Re-enable upload button after 2 seconds
+        setTimeout(() => {
+            uploadBtn.disabled = false;
+        }, 2000);
+    }
+}
+
+function showUploadStatus(type, message, details = '') {
+    const uploadStatusDiv = document.getElementById('uploadStatus');
+    const statusContent = uploadStatusDiv.querySelector('.status-content');
+    
+    // Remove existing status classes
+    uploadStatusDiv.classList.remove('uploading', 'success', 'error');
+    
+    // Add new status class
+    uploadStatusDiv.classList.add(type);
+    
+    // Update content
+    statusContent.innerHTML = `
+        <span class="status-icon"></span>
+        <span class="status-message">${message}</span>
+        ${details ? `<span class="status-details">${details}</span>` : ''}
+    `;
+    
+    // Show the status
+    uploadStatusDiv.style.display = 'block';
+    
+    // Hide after 5 seconds for success/error states
+    if (type !== 'uploading') {
+        setTimeout(() => {
+            uploadStatusDiv.style.display = 'none';
+        }, 5000);
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }

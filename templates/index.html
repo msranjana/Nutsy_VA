@@ -82,6 +82,20 @@
                     <audio id="playbackAudio" controls>
                         Your browser does not support the audio element.
                     </audio>
+                    
+                    <div class="upload-controls">
+                        <button id="uploadButton" class="upload-button" onclick="uploadRecording()">
+                            📤 Upload Recording
+                        </button>
+                    </div>
+                    
+                    <div id="uploadStatus" class="upload-status" style="display: none;">
+                        <div class="status-content">
+                            <div class="status-icon"></div>
+                            <div class="status-message"></div>
+                            <div class="status-details"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
