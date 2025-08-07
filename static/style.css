@@ -394,6 +394,9 @@ body {
 
 .upload-controls {
     margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .upload-button {
@@ -414,6 +417,7 @@ body {
     touch-action: manipulation;
     min-height: 44px;
     min-width: 140px;
+    flex: 1;
 }
 
 .upload-button:hover:not(:disabled) {
@@ -423,6 +427,39 @@ body {
 }
 
 .upload-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.transcribe-button {
+    background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px 0 rgba(255, 152, 0, 0.3);
+    font-family: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+    min-height: 44px;
+    min-width: 140px;
+    flex: 1;
+}
+
+.transcribe-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(255, 152, 0, 0.4);
+    background: linear-gradient(135deg, #ffb74d 0%, #ff9800 100%);
+}
+
+.transcribe-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
@@ -496,6 +533,66 @@ body {
 
 .upload-status.error .status-message {
     color: #f44336;
+}
+
+/* Transcription Section Styles */
+.transcription-section {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.transcription-section h4 {
+    margin: 0 0 1rem 0;
+    color: #ff9800;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.transcription-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.transcription-text {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.95rem;
+    min-height: 60px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.transcription-text:empty::before {
+    content: "Transcription will appear here...";
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.transcription-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.transcription-info .info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 /* Tablet styles */
@@ -620,6 +717,35 @@ body {
     .playback-section h3 {
         font-size: 1.1rem;
         margin-bottom: 1rem;
+    }
+    
+    .upload-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .upload-button,
+    .transcribe-button {
+        min-width: unset;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .transcription-section {
+        margin-top: 1rem;
+        padding: 1rem;
+    }
+    
+    .transcription-text {
+        font-size: 0.9rem;
+        padding: 0.8rem;
+        max-height: 150px;
+    }
+    
+    .transcription-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
 }
 

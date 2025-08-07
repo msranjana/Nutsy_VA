@@ -87,6 +87,9 @@
                         <button id="uploadButton" class="upload-button" onclick="uploadRecording()">
                             📤 Upload Recording
                         </button>
+                        <button id="transcribeButton" class="transcribe-button" onclick="transcribeRecording()">
+                            📝 Transcribe Audio
+                        </button>
                     </div>
                     
                     <div id="uploadStatus" class="upload-status" style="display: none;">
@@ -96,10 +99,22 @@
                             <div class="status-details"></div>
                         </div>
                     </div>
+                    
+                    <div id="transcriptionSection" class="transcription-section" style="display: none;">
+                        <h4>Transcription:</h4>
+                        <div class="transcription-content">
+                            <div id="transcriptionText" class="transcription-text"></div>
+                            <div id="transcriptionInfo" class="transcription-info"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="/static/script.js"></script>
+    <script src="/static/script.js?v=3"></script>
+    <script>
+        // Test if JavaScript is working
+        console.log('✅ JavaScript is loaded and working');
+    </script>
 </body>
 </html>

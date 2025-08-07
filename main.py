@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import uuid
 from pathlib import Path
+import assemblyai as aai
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +24,15 @@ templates = Jinja2Templates(directory="templates")
 MURF_API_KEY = os.getenv("MURF_API_KEY", "YOUR_MURF_API_KEY")
 MURF_API_URL = "https://api.murf.ai/v1/speech/generate"  # Correct Murf API endpoint
 
+# AssemblyAI configuration
+ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY", "YOUR_ASSEMBLYAI_API_KEY")
+aai.settings.api_key = ASSEMBLYAI_API_KEY
+
+# Debug print to verify API key is loaded
+print(f"AssemblyAI API Key loaded: {'Yes' if ASSEMBLYAI_API_KEY and ASSEMBLYAI_API_KEY != 'YOUR_ASSEMBLYAI_API_KEY' else 'No'}")
+print(f"API Key length: {len(ASSEMBLYAI_API_KEY) if ASSEMBLYAI_API_KEY else 0}")
+print(f"API Key first 10 chars: {ASSEMBLYAI_API_KEY[:10] if ASSEMBLYAI_API_KEY else 'None'}")
+
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -32,7 +42,10 @@ async def debug_info():
     return {
         "murf_api_key_set": bool(MURF_API_KEY and MURF_API_KEY != "YOUR_MURF_API_KEY"),
         "murf_api_url": MURF_API_URL,
-        "api_key_length": len(MURF_API_KEY) if MURF_API_KEY else 0
+        "murf_api_key_length": len(MURF_API_KEY) if MURF_API_KEY else 0,
+        "assemblyai_api_key_set": bool(ASSEMBLYAI_API_KEY and ASSEMBLYAI_API_KEY != "YOUR_ASSEMBLYAI_API_KEY"),
+        "assemblyai_api_key_length": len(ASSEMBLYAI_API_KEY) if ASSEMBLYAI_API_KEY else 0,
+        "assemblyai_api_key_preview": ASSEMBLYAI_API_KEY[:10] + "..." if ASSEMBLYAI_API_KEY and len(ASSEMBLYAI_API_KEY) > 10 else "Not set"
     }
 
 @app.get("/voices")
@@ -185,3 +198,61 @@ async def test_upload(file: UploadFile = File(...)):
     except Exception as e:
         print(f"TEST UPLOAD - Error: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+@app.post("/transcribe/file")
+async def transcribe_audio_file(file: UploadFile = File(...)):
+    """Transcribe audio file using AssemblyAI"""
+    try:
+        print(f"=== TRANSCRIPTION DEBUG START ===")
+        print(f"Received file for transcription: {file.filename}")
+        print(f"Content type: {file.content_type}")
+        
+        # Read the audio file content
+        audio_data = await file.read()
+        file_size = len(audio_data)
+        print(f"Audio file size: {file_size} bytes")
+        
+        # Validate file size
+        if file_size == 0:
+            raise HTTPException(status_code=400, detail="Empty audio file received")
+        
+        # Validate API key
+        if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
+            raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
+        
+        # Create transcriber instance
+        transcriber = aai.Transcriber()
+        
+        print("Starting transcription with AssemblyAI...")
+        
+        # Transcribe the audio data directly (no need to save file)
+        transcript = transcriber.transcribe(audio_data)
+        
+        print(f"Transcription status: {transcript.status}")
+        
+        # Check if transcription was successful
+        if transcript.status == aai.TranscriptStatus.error:
+            error_detail = f"Transcription failed: {transcript.error}"
+            print(f"AssemblyAI error: {error_detail}")
+            raise HTTPException(status_code=500, detail=error_detail)
+        
+        print(f"Transcription completed successfully")
+        print(f"Transcript text (first 100 chars): {transcript.text[:100]}...")
+        print(f"=== TRANSCRIPTION DEBUG END ===")
+        
+        return {
+            "success": True,
+            "transcript": transcript.text,
+            "confidence": getattr(transcript, 'confidence', None),
+            "audio_duration": getattr(transcript, 'audio_duration', None),
+            "word_count": len(transcript.text.split()) if transcript.text else 0,
+            "original_filename": file.filename or "recording.webm",
+            "message": "Audio transcription completed successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_detail = f"Transcription failed: {str(e)}"
+        print(f"Transcription exception: {error_detail}")
+        raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {error_detail}")

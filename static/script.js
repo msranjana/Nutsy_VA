@@ -297,3 +297,107 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+// Simple test function for debugging
+function testTranscribe() {
+    console.log('🧪 Test transcribe function called!');
+    alert('Transcribe button is working!');
+}
+
+// Transcription functionality
+async function transcribeRecording() {
+    console.log('🔍 Transcribe button clicked!');
+    console.log('🔍 audioBlob exists:', !!audioBlob);
+    
+    if (!audioBlob) {
+        console.log('❌ No audioBlob available');
+        showUploadStatus('error', 'No recording available', 'Please record audio first');
+        return;
+    }
+
+    console.log('✅ Starting transcription process...');
+    const transcribeBtn = document.getElementById('transcribeButton');
+    const transcriptionSection = document.getElementById('transcriptionSection');
+    const transcriptionText = document.getElementById('transcriptionText');
+    const transcriptionInfo = document.getElementById('transcriptionInfo');
+    
+    console.log('🔍 DOM elements found:', {
+        transcribeBtn: !!transcribeBtn,
+        transcriptionSection: !!transcriptionSection,
+        transcriptionText: !!transcriptionText,
+        transcriptionInfo: !!transcriptionInfo
+    });
+    
+    try {
+        // Disable transcribe button and show processing status
+        transcribeBtn.disabled = true;
+        transcribeBtn.textContent = '🔄 Transcribing...';
+        
+        // Show transcription section and clear previous content
+        transcriptionSection.style.display = 'block';
+        transcriptionText.textContent = 'Processing audio transcription...';
+        transcriptionText.style.fontStyle = 'italic';
+        transcriptionText.style.color = 'rgba(255, 255, 255, 0.7)';
+        transcriptionInfo.innerHTML = '';
+
+        console.log('📤 Sending request to /transcribe/file...');
+
+        // Create FormData and append the audio blob
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+
+        // Send to transcription endpoint
+        const response = await fetch('/transcribe/file', {
+            method: 'POST',
+            body: formData
+        });
+
+        console.log('📥 Response received:', response.status, response.statusText);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Transcription failed: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        
+        // Display transcription results
+        if (result.success && result.transcript) {
+            transcriptionText.textContent = result.transcript;
+            transcriptionText.style.fontStyle = 'normal';
+            transcriptionText.style.color = 'rgba(255, 255, 255, 0.95)';
+            
+            // Update transcription info
+            const infoItems = [];
+            if (result.word_count) {
+                infoItems.push(`<span class="info-item">📊 ${result.word_count} words</span>`);
+            }
+            if (result.audio_duration) {
+                infoItems.push(`<span class="info-item">⏱️ ${result.audio_duration}s</span>`);
+            }
+            if (result.confidence) {
+                infoItems.push(`<span class="info-item">✅ ${Math.round(result.confidence * 100)}% confidence</span>`);
+            }
+            
+            transcriptionInfo.innerHTML = infoItems.join('');
+            
+            showUploadStatus('success', 'Transcription completed!', `${result.word_count} words transcribed`);
+        } else {
+            throw new Error('No transcription text received');
+        }
+        
+    } catch (error) {
+        console.error('Transcription error:', error);
+        transcriptionText.textContent = 'Transcription failed. Please try again.';
+        transcriptionText.style.fontStyle = 'italic';
+        transcriptionText.style.color = '#f44336';
+        transcriptionInfo.innerHTML = '';
+        showUploadStatus('error', 'Transcription failed', error.message);
+    } finally {
+        // Re-enable transcribe button
+        setTimeout(() => {
+            transcribeBtn.disabled = false;
+            transcribeBtn.textContent = '📝 Transcribe Audio';
+        }, 2000);
+    }
+}
