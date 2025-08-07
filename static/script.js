@@ -367,21 +367,21 @@ async function transcribeRecording() {
             transcriptionText.style.fontStyle = 'normal';
             transcriptionText.style.color = 'rgba(255, 255, 255, 0.95)';
             
-            // Update transcription info
+            // Update transcription info (word count and time commented out)
             const infoItems = [];
-            if (result.word_count) {
-                infoItems.push(`<span class="info-item">📊 ${result.word_count} words</span>`);
-            }
-            if (result.audio_duration) {
-                infoItems.push(`<span class="info-item">⏱️ ${result.audio_duration}s</span>`);
-            }
-            if (result.confidence) {
-                infoItems.push(`<span class="info-item">✅ ${Math.round(result.confidence * 100)}% confidence</span>`);
-            }
+            // if (result.word_count) {
+            //     infoItems.push(`<span class="info-item">📊 ${result.word_count} words</span>`);
+            // }
+            // if (result.audio_duration) {
+            //     infoItems.push(`<span class="info-item">⏱️ ${result.audio_duration}s</span>`);
+            // }
+            // if (result.confidence) {
+            //     infoItems.push(`<span class="info-item">✅ ${Math.round(result.confidence * 100)}% confidence</span>`);
+            // }
             
             transcriptionInfo.innerHTML = infoItems.join('');
             
-            showUploadStatus('success', 'Transcription completed!', `${result.word_count} words transcribed`);
+            showUploadStatus('success', 'Transcription completed!', 'Audio transcribed successfully');
         } else {
             throw new Error('No transcription text received');
         }
