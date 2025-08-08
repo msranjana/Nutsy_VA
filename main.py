@@ -256,3 +256,71 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
         error_detail = f"Transcription failed: {str(e)}"
         print(f"Transcription exception: {error_detail}")
         raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {error_detail}")
+@app.post("/tts/echo")
+async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-julia")):
+    """Echo Bot v2: Transcribe audio and return Murf-generated voice audio URL"""
+    try:
+        print("=== ECHO BOT START ===")
+        print(f"Received file: {file.filename}")
+
+        # Step 1 — Read audio
+        audio_data = await file.read()
+        if not audio_data:
+            raise HTTPException(status_code=400, detail="Empty audio file received")
+
+        # Step 2 — Transcribe with AssemblyAI
+        if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
+            raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
+        
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_data)
+        
+        if transcript.status == aai.TranscriptStatus.error:
+            raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
+        
+        transcribed_text = transcript.text.strip()
+        print(f"Transcribed text: {transcribed_text}")
+
+        if not transcribed_text:
+            raise HTTPException(status_code=400, detail="No speech detected in the audio")
+
+        # Step 3 — Send to Murf API
+        if not MURF_API_KEY or MURF_API_KEY == "YOUR_MURF_API_KEY":
+            raise HTTPException(status_code=500, detail="Murf API key not configured")
+        
+        headers = {
+            "api-key": MURF_API_KEY,
+            "Content-Type": "application/json"
+        }
+        data = {
+            "text": transcribed_text,
+            "voiceId": voice_id,
+            "format": "MP3",
+            "channelType": "MONO",
+            "sampleRate": 44100
+        }
+
+        murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
+        if murf_resp.status_code != 200:
+            raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
+        
+        murf_result = murf_resp.json()
+        audio_url = murf_result.get("audioFile")
+        if not audio_url:
+            raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
+
+        print(f"Generated Murf audio: {audio_url}")
+        print("=== ECHO BOT END ===")
+
+        return {
+            "success": True,
+            "transcript": transcribed_text,
+            "audio_url": audio_url
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_detail = f"Echo bot processing failed: {str(e)}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)

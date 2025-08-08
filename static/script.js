@@ -139,153 +139,268 @@ let audioURL;
 
 async function startRecording() {
     try {
-        // Request microphone access
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                sampleRate: 44100
-            } 
-        });
+        console.log('Starting recording...');
         
-        // Create MediaRecorder instance
-        mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'audio/webm;codecs=opus'
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         
-        // Reset audio chunks
+        mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
         
-        // Set up event handlers
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                audioChunks.push(event.data);
-            }
-        };
+        mediaRecorder.addEventListener('dataavailable', event => {
+            console.log('Data available:', event.data.size);
+            audioChunks.push(event.data);
+        });
         
-        mediaRecorder.onstop = () => {
-            // Create blob from chunks
-            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        mediaRecorder.addEventListener('stop', async () => {
+            console.log('MediaRecorder stopped');
             
-            // Create URL and set up playback
+            // Create blob from recorded chunks
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
             audioURL = URL.createObjectURL(audioBlob);
-            const playbackAudio = document.getElementById('playbackAudio');
-            playbackAudio.src = audioURL;
+            
+            console.log('Audio blob created:', audioBlob);
+            console.log('Audio URL created:', audioURL);
             
             // Show playback section
-            document.getElementById('playbackSection').style.display = 'block';
+            const playbackSection = document.getElementById('playbackSection');
+            playbackSection.style.display = 'block';
             
-            // Stop all tracks to release microphone
-            stream.getTracks().forEach(track => track.stop());
-        };
+            // Process through Echo Bot v2
+            await processEchoBotV2();
+        });
         
-        // Start recording
-        mediaRecorder.start(1000); // Collect data every second
+        mediaRecorder.start();
+        console.log('MediaRecorder started');
         
         // Update UI
         updateRecordingUI(true);
         
-        console.log('Recording started');
-        
     } catch (error) {
         console.error('Error starting recording:', error);
-        alert('Could not access microphone. Please ensure you have granted microphone permissions and try again.');
+        showUploadStatus('error', 'Recording Error', 'Could not start recording: ' + error.message);
     }
 }
 
-function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        updateRecordingUI(false);
-        console.log('Recording stopped');
+async function stopRecording() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        console.error('MediaRecorder is not active');
+        return;
     }
+
+    console.log('Stopping recording...');
+    mediaRecorder.stop();
+    
+    // Stop all tracks to release the microphone
+    if (mediaRecorder.stream) {
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Update UI
+    updateRecordingUI(false);
 }
 
+// Fix: Add the missing updateRecordingUI function
 function updateRecordingUI(isRecording) {
-    const startButton = document.getElementById('startRecording');
-    const stopButton = document.getElementById('stopRecording');
+    const startBtn = document.getElementById('startRecording');
+    const stopBtn = document.getElementById('stopRecording');
     const recordingStatus = document.getElementById('recordingStatus');
     
     if (isRecording) {
-        startButton.disabled = true;
-        stopButton.disabled = false;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
         recordingStatus.style.display = 'flex';
     } else {
-        startButton.disabled = false;
-        stopButton.disabled = true;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
         recordingStatus.style.display = 'none';
     }
 }
 
-// Upload functionality
+async function processEchoBotV2() {
+    try {
+        const playbackAudio = document.getElementById('playbackAudio');
+        const voiceSelect = document.getElementById('voiceSelect');
+        
+        // Show loading state
+        playbackAudio.style.opacity = '0.5';
+        showUploadStatus('uploading', 'Processing...', 'Transcribing and generating speech...');
+        
+        // Get selected voice (or default)
+        const selectedVoice = voiceSelect ? voiceSelect.value : 'en-US-julia';
+        
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        formData.append('voice_id', selectedVoice);
+        
+        console.log('Sending to Echo Bot v2 endpoint...');
+        console.log('Selected voice:', selectedVoice);
+        
+        // Send to Echo Bot v2 endpoint
+        const response = await fetch('/tts/echo', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(`Echo Bot v2 failed: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+        
+        const result = await response.json();
+        console.log('Echo Bot v2 response:', result);
+        
+        if (result.success && result.audio_url) {
+            // Set the Murf-generated audio URL instead of raw recording
+            playbackAudio.src = result.audio_url;
+            playbackAudio.style.opacity = '1';
+            
+            // Show the transcription
+            if (result.transcript) {
+                showTranscriptionResult(result.transcript);
+            }
+            
+            // Auto-play the Murf-generated audio
+            try {
+                await playbackAudio.play();
+                showUploadStatus('success', 'Echo Bot v2 Complete!', `Transcribed and generated speech with ${selectedVoice}`);
+            } catch (playError) {
+                console.log('Auto-play blocked, user can manually play');
+                showUploadStatus('success', 'Echo Bot v2 Complete!', 'Click play to hear the AI-generated speech');
+            }
+            
+        } else {
+            throw new Error('No audio URL returned from Echo Bot v2');
+        }
+        
+    } catch (error) {
+        console.error('Echo Bot v2 error:', error);
+        playbackAudio.style.opacity = '1';
+        
+        // Fallback to raw recording if Echo Bot v2 fails
+        const playbackAudio = document.getElementById('playbackAudio');
+        playbackAudio.src = audioURL;
+        
+        showUploadStatus('error', 'Echo Bot v2 Failed', 'Playing raw recording as fallback. ' + error.message);
+    }
+}
+
+function showTranscriptionResult(transcript) {
+    // Show transcription section
+    const transcriptionSection = document.getElementById('transcriptionSection');
+    const transcriptionText = document.getElementById('transcriptionText');
+    
+    if (transcriptionSection && transcriptionText) {
+        transcriptionText.textContent = transcript;
+        transcriptionText.style.fontStyle = 'normal';
+        transcriptionText.style.color = 'rgba(255, 255, 255, 0.95)';
+        transcriptionSection.style.display = 'block';
+    }
+}
+
 async function uploadRecording() {
     if (!audioBlob) {
-        showUploadStatus('error', 'No recording available', 'Please record audio first');
+        showUploadStatus('error', 'Upload Failed', 'No recording available to upload');
         return;
     }
 
-    const uploadBtn = document.getElementById('uploadButton');
-    
     try {
-        // Disable upload button and show uploading status
+        const uploadBtn = document.getElementById('uploadButton');
         uploadBtn.disabled = true;
-        showUploadStatus('uploading', 'Uploading audio...', 'Please wait');
-
-        // Create FormData and append the audio blob
+        
+        showUploadStatus('uploading', 'Uploading...', 'Sending recording to server...');
+        
         const formData = new FormData();
-        // Use the original blob directly instead of creating a File object
         formData.append('file', audioBlob, 'recording.webm');
-
-        // Send to server
+        
         const response = await fetch('/upload-audio', {
             method: 'POST',
             body: formData
         });
-
+        
         if (!response.ok) {
             throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
         }
-
+        
         const result = await response.json();
         
-        // Show success message
-        showUploadStatus('success', 'Upload successful!', `File: ${result.filename} (${formatFileSize(result.size)})`);
+        if (result.success) {
+            showUploadStatus('success', 'Upload Complete!', 
+                `File: ${result.filename} (${formatFileSize(result.size)})`);
+        } else {
+            throw new Error('Upload response indicated failure');
+        }
         
     } catch (error) {
         console.error('Upload error:', error);
-        showUploadStatus('error', 'Upload failed', error.message);
+        showUploadStatus('error', 'Upload Failed', error.message);
     } finally {
-        // Re-enable upload button after 2 seconds
-        setTimeout(() => {
-            uploadBtn.disabled = false;
-        }, 2000);
+        const uploadBtn = document.getElementById('uploadButton');
+        uploadBtn.disabled = false;
     }
 }
 
-function showUploadStatus(type, message, details = '') {
-    const uploadStatusDiv = document.getElementById('uploadStatus');
-    const statusContent = uploadStatusDiv.querySelector('.status-content');
+async function transcribeRecording() {
+    if (!audioBlob) {
+        showUploadStatus('error', 'Transcription Failed', 'No recording available to transcribe');
+        return;
+    }
+
+    try {
+        const transcribeBtn = document.getElementById('transcribeButton');
+        transcribeBtn.disabled = true;
+        
+        showUploadStatus('uploading', 'Transcribing...', 'Processing audio with AssemblyAI...');
+        
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        
+        const response = await fetch('/transcribe/file', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Transcription failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.transcript) {
+            showTranscriptionResult(result.transcript);
+            showUploadStatus('success', 'Transcription Complete!', 'Audio transcribed successfully');
+        } else {
+            throw new Error('No transcription text received');
+        }
+        
+    } catch (error) {
+        console.error('Transcription error:', error);
+        showUploadStatus('error', 'Transcription Failed', error.message);
+    } finally {
+        const transcribeBtn = document.getElementById('transcribeButton');
+        transcribeBtn.disabled = false;
+    }
+}
+
+function showUploadStatus(type, message, details) {
+    const statusDiv = document.getElementById('uploadStatus');
+    const statusIcon = statusDiv.querySelector('.status-icon');
+    const statusMessage = statusDiv.querySelector('.status-message');
+    const statusDetails = statusDiv.querySelector('.status-details');
     
-    // Remove existing status classes
-    uploadStatusDiv.classList.remove('uploading', 'success', 'error');
+    // Remove existing classes
+    statusDiv.classList.remove('uploading', 'success', 'error');
+    statusDiv.classList.add(type);
     
-    // Add new status class
-    uploadStatusDiv.classList.add(type);
+    statusMessage.textContent = message;
+    statusDetails.textContent = details;
     
-    // Update content
-    statusContent.innerHTML = `
-        <span class="status-icon"></span>
-        <span class="status-message">${message}</span>
-        ${details ? `<span class="status-details">${details}</span>` : ''}
-    `;
+    statusDiv.style.display = 'block';
     
-    // Show the status
-    uploadStatusDiv.style.display = 'block';
-    
-    // Hide after 5 seconds for success/error states
+    // Auto-hide after 5 seconds for success/error
     if (type !== 'uploading') {
         setTimeout(() => {
-            uploadStatusDiv.style.display = 'none';
+            statusDiv.style.display = 'none';
         }, 5000);
     }
 }
@@ -296,108 +411,4 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Simple test function for debugging
-function testTranscribe() {
-    console.log('🧪 Test transcribe function called!');
-    alert('Transcribe button is working!');
-}
-
-// Transcription functionality
-async function transcribeRecording() {
-    console.log('🔍 Transcribe button clicked!');
-    console.log('🔍 audioBlob exists:', !!audioBlob);
-    
-    if (!audioBlob) {
-        console.log('❌ No audioBlob available');
-        showUploadStatus('error', 'No recording available', 'Please record audio first');
-        return;
-    }
-
-    console.log('✅ Starting transcription process...');
-    const transcribeBtn = document.getElementById('transcribeButton');
-    const transcriptionSection = document.getElementById('transcriptionSection');
-    const transcriptionText = document.getElementById('transcriptionText');
-    const transcriptionInfo = document.getElementById('transcriptionInfo');
-    
-    console.log('🔍 DOM elements found:', {
-        transcribeBtn: !!transcribeBtn,
-        transcriptionSection: !!transcriptionSection,
-        transcriptionText: !!transcriptionText,
-        transcriptionInfo: !!transcriptionInfo
-    });
-    
-    try {
-        // Disable transcribe button and show processing status
-        transcribeBtn.disabled = true;
-        transcribeBtn.textContent = '🔄 Transcribing...';
-        
-        // Show transcription section and clear previous content
-        transcriptionSection.style.display = 'block';
-        transcriptionText.textContent = 'Processing audio transcription...';
-        transcriptionText.style.fontStyle = 'italic';
-        transcriptionText.style.color = 'rgba(255, 255, 255, 0.7)';
-        transcriptionInfo.innerHTML = '';
-
-        console.log('📤 Sending request to /transcribe/file...');
-
-        // Create FormData and append the audio blob
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'recording.webm');
-
-        // Send to transcription endpoint
-        const response = await fetch('/transcribe/file', {
-            method: 'POST',
-            body: formData
-        });
-
-        console.log('📥 Response received:', response.status, response.statusText);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Transcription failed: ${response.status} - ${errorText}`);
-        }
-
-        const result = await response.json();
-        
-        // Display transcription results
-        if (result.success && result.transcript) {
-            transcriptionText.textContent = result.transcript;
-            transcriptionText.style.fontStyle = 'normal';
-            transcriptionText.style.color = 'rgba(255, 255, 255, 0.95)';
-            
-            // Update transcription info (word count and time commented out)
-            const infoItems = [];
-            // if (result.word_count) {
-            //     infoItems.push(`<span class="info-item">📊 ${result.word_count} words</span>`);
-            // }
-            // if (result.audio_duration) {
-            //     infoItems.push(`<span class="info-item">⏱️ ${result.audio_duration}s</span>`);
-            // }
-            // if (result.confidence) {
-            //     infoItems.push(`<span class="info-item">✅ ${Math.round(result.confidence * 100)}% confidence</span>`);
-            // }
-            
-            transcriptionInfo.innerHTML = infoItems.join('');
-            
-            showUploadStatus('success', 'Transcription completed!', 'Audio transcribed successfully');
-        } else {
-            throw new Error('No transcription text received');
-        }
-        
-    } catch (error) {
-        console.error('Transcription error:', error);
-        transcriptionText.textContent = 'Transcription failed. Please try again.';
-        transcriptionText.style.fontStyle = 'italic';
-        transcriptionText.style.color = '#f44336';
-        transcriptionInfo.innerHTML = '';
-        showUploadStatus('error', 'Transcription failed', error.message);
-    } finally {
-        // Re-enable transcribe button
-        setTimeout(() => {
-            transcribeBtn.disabled = false;
-            transcribeBtn.textContent = '📝 Transcribe Audio';
-        }, 2000);
-    }
 }
