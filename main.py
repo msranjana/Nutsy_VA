@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import uuid
 from pathlib import Path
 import assemblyai as aai
+from google import genai
+from pydantic import BaseModel
+
 
 # Load environment variables
 load_dotenv()
@@ -324,3 +327,33 @@ async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-jul
         error_detail = f"Echo bot processing failed: {str(e)}"
         print(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
+
+# Create Gemini client (will use GEMINI_API_KEY from environment)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+# Request body model
+class QueryRequest(BaseModel):
+    text: str
+
+@app.post("/llm/query")
+async def llm_query(request: QueryRequest):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    try:
+        # Call Gemini API
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",  # You can change to gemini-pro or gemini-2.5-flash
+            contents=request.text
+        )
+
+        # Get text output
+        output_text = getattr(response, "text", None)
+        if not output_text:
+            output_text = str(response)
+
+        return {"input": request.text, "output": output_text}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
