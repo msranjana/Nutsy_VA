@@ -1,3 +1,7 @@
+# Day 1: Project Setup
+# - Initialize FastAPI backend
+# - Serve index.html and static files for frontend (HTML/JS)
+# - Basic server setup
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,19 +19,25 @@ from pydantic import BaseModel
 # Load environment variables
 load_dotenv()
 
+# Initialize FastAPI app
 app = FastAPI()
 
-# Create uploads directory if it doesn't exist
+# Day 5: Send Audio to the Server
+# - Create uploads directory if it doesn't exist
 uploads_dir = Path("uploads")
 uploads_dir.mkdir(exist_ok=True)
 
+# Mount static files and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Day 2: Your First REST TTS Call
+# - Murf API key and endpoint setup
 MURF_API_KEY = os.getenv("MURF_API_KEY", "YOUR_MURF_API_KEY")
 MURF_API_URL = "https://api.murf.ai/v1/speech/generate"  # Correct Murf API endpoint
 
-# AssemblyAI configuration
+# Day 6: Implement Server-Side Transcription
+# - AssemblyAI configuration
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY", "YOUR_ASSEMBLYAI_API_KEY")
 aai.settings.api_key = ASSEMBLYAI_API_KEY
 
@@ -36,10 +46,12 @@ print(f"AssemblyAI API Key loaded: {'Yes' if ASSEMBLYAI_API_KEY and ASSEMBLYAI_A
 print(f"API Key length: {len(ASSEMBLYAI_API_KEY) if ASSEMBLYAI_API_KEY else 0}")
 print(f"API Key first 10 chars: {ASSEMBLYAI_API_KEY[:10] if ASSEMBLYAI_API_KEY else 'None'}")
 
+# Day 1: Serve index.html
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+# (Optional) Debug endpoint
 @app.get("/debug")
 async def debug_info():
     return {
@@ -51,6 +63,7 @@ async def debug_info():
         "assemblyai_api_key_preview": ASSEMBLYAI_API_KEY[:10] + "..." if ASSEMBLYAI_API_KEY and len(ASSEMBLYAI_API_KEY) > 10 else "Not set"
     }
 
+# (Optional) Get available voices
 @app.get("/voices")
 async def get_voices():
     """Get available Murf voices"""
@@ -59,25 +72,21 @@ async def get_voices():
             "api-key": MURF_API_KEY,
             "Content-Type": "application/json"
         }
-        
         response = requests.get("https://api.murf.ai/v1/speech/voices", headers=headers)
-        
         if response.status_code == 200:
             return response.json()
         else:
             raise HTTPException(status_code=500, detail=f"Failed to fetch voices: {response.text}")
-            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching voices: {str(e)}")
 
+# Day 2: TTS endpoint for Murf API
 @app.post("/tts")
 async def text_to_speech(payload: dict):
     text = payload.get("text")
     voice_id = payload.get("voice_id", "en-US-julia")  # Default voice
-    
     if not text:
         raise HTTPException(status_code=400, detail="Missing text")
-    
     headers = {
         "api-key": MURF_API_KEY,  # Murf uses 'api-key' header, not 'Authorization'
         "Content-Type": "application/json"
@@ -89,29 +98,22 @@ async def text_to_speech(payload: dict):
         "channelType": "MONO",
         "sampleRate": 44100
     }
-    
     try:
         print(f"Making request to Murf API: {MURF_API_URL}")
         print(f"Headers: {headers}")
         print(f"Data: {data}")
-        
         response = requests.post(MURF_API_URL, json=data, headers=headers)
-        
         print(f"Response status code: {response.status_code}")
         print(f"Response content: {response.text}")
-        
         if response.status_code != 200:
             error_detail = f"Murf API returned status {response.status_code}: {response.text}"
             print(f"Error: {error_detail}")
             raise HTTPException(status_code=500, detail=f"Failed to generate audio: {error_detail}")
-        
         result = response.json()
         audio_url = result.get("audioFile")  # Murf returns 'audioFile', not 'audio_url'
-        
         if not audio_url:
             print(f"No audioFile in response: {result}")
             raise HTTPException(status_code=500, detail="No audio URL returned from Murf API")
-            
         return {
             "audio_url": audio_url,
             "audio_length": result.get("audioLengthInSeconds"),
@@ -128,6 +130,7 @@ async def text_to_speech(payload: dict):
         print(f"Unexpected exception: {error_detail}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {error_detail}")
 
+# Day 5: Upload audio endpoint
 @app.post("/upload-audio")
 async def upload_audio(file: UploadFile = File(...)):
     """Upload and save audio file temporarily"""
@@ -136,16 +139,13 @@ async def upload_audio(file: UploadFile = File(...)):
         print(f"Received file: {file.filename}")
         print(f"Content type: {file.content_type}")
         print(f"File size: {file.size if hasattr(file, 'size') else 'Unknown'}")
-        
         # Read file content first to get actual size
         content = await file.read()
         file_size = len(content)
         print(f"Actual file size: {file_size} bytes")
-        
         # Validate file size
         if file_size == 0:
             raise HTTPException(status_code=400, detail="Empty file received")
-        
         # Validate file type - be more lenient for browser recordings
         if not file.content_type:
             print("No content type provided, assuming audio/webm for browser recording")
@@ -154,24 +154,19 @@ async def upload_audio(file: UploadFile = File(...)):
                  file.content_type == 'application/octet-stream' or
                  'webm' in file.content_type):
             raise HTTPException(status_code=400, detail=f"File must be an audio file. Received: {file.content_type}")
-        
         # Generate unique filename
         file_extension = ".webm"  # Default for browser recordings
         if file.filename:
             original_extension = Path(file.filename).suffix
             if original_extension:
                 file_extension = original_extension
-        
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = uploads_dir / unique_filename
-        
         # Save file
         with open(file_path, "wb") as f:
             f.write(content)
-        
         print(f"Audio file uploaded successfully: {unique_filename}, Size: {file_size} bytes")
         print(f"=== UPLOAD DEBUG END ===")
-        
         return {
             "success": True,
             "filename": unique_filename,
@@ -181,7 +176,6 @@ async def upload_audio(file: UploadFile = File(...)):
             "size_mb": round(file_size / (1024 * 1024), 2),
             "message": "Audio file uploaded successfully"
         }
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -189,6 +183,7 @@ async def upload_audio(file: UploadFile = File(...)):
         print(f"Upload exception: {error_detail}")
         raise HTTPException(status_code=500, detail=f"Failed to upload audio file: {error_detail}")
 
+# (Optional) Test upload endpoint
 @app.post("/test-upload")
 async def test_upload(file: UploadFile = File(...)):
     """Simple test upload endpoint for debugging"""
@@ -202,6 +197,7 @@ async def test_upload(file: UploadFile = File(...)):
         print(f"TEST UPLOAD - Error: {str(e)}")
         return {"status": "error", "message": str(e)}
 
+# Day 6: Transcribe audio file endpoint (AssemblyAI)
 @app.post("/transcribe/file")
 async def transcribe_audio_file(file: UploadFile = File(...)):
     """Transcribe audio file using AssemblyAI"""
@@ -209,40 +205,30 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
         print(f"=== TRANSCRIPTION DEBUG START ===")
         print(f"Received file for transcription: {file.filename}")
         print(f"Content type: {file.content_type}")
-        
         # Read the audio file content
         audio_data = await file.read()
         file_size = len(audio_data)
         print(f"Audio file size: {file_size} bytes")
-        
         # Validate file size
         if file_size == 0:
             raise HTTPException(status_code=400, detail="Empty audio file received")
-        
         # Validate API key
         if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
             raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
-        
         # Create transcriber instance
         transcriber = aai.Transcriber()
-        
         print("Starting transcription with AssemblyAI...")
-        
         # Transcribe the audio data directly (no need to save file)
         transcript = transcriber.transcribe(audio_data)
-        
         print(f"Transcription status: {transcript.status}")
-        
         # Check if transcription was successful
         if transcript.status == aai.TranscriptStatus.error:
             error_detail = f"Transcription failed: {transcript.error}"
             print(f"AssemblyAI error: {error_detail}")
             raise HTTPException(status_code=500, detail=error_detail)
-        
         print(f"Transcription completed successfully")
         print(f"Transcript text (first 100 chars): {transcript.text[:100]}...")
         print(f"=== TRANSCRIPTION DEBUG END ===")
-        
         return {
             "success": True,
             "transcript": transcript.text,
@@ -252,45 +238,37 @@ async def transcribe_audio_file(file: UploadFile = File(...)):
             "original_filename": file.filename or "recording.webm",
             "message": "Audio transcription completed successfully"
         }
-        
     except HTTPException:
         raise
     except Exception as e:
         error_detail = f"Transcription failed: {str(e)}"
         print(f"Transcription exception: {error_detail}")
         raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {error_detail}")
+# Day 7: Echo Bot v2 endpoint (transcribe and TTS)
 @app.post("/tts/echo")
 async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-julia")):
     """Echo Bot v2: Transcribe audio and return Murf-generated voice audio URL"""
     try:
         print("=== ECHO BOT START ===")
         print(f"Received file: {file.filename}")
-
         # Step 1 — Read audio
         audio_data = await file.read()
         if not audio_data:
             raise HTTPException(status_code=400, detail="Empty audio file received")
-
         # Step 2 — Transcribe with AssemblyAI
         if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
             raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
-        
         transcriber = aai.Transcriber()
         transcript = transcriber.transcribe(audio_data)
-        
         if transcript.status == aai.TranscriptStatus.error:
             raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
-        
         transcribed_text = transcript.text.strip()
         print(f"Transcribed text: {transcribed_text}")
-
         if not transcribed_text:
             raise HTTPException(status_code=400, detail="No speech detected in the audio")
-
         # Step 3 — Send to Murf API
         if not MURF_API_KEY or MURF_API_KEY == "YOUR_MURF_API_KEY":
             raise HTTPException(status_code=500, detail="Murf API key not configured")
-        
         headers = {
             "api-key": MURF_API_KEY,
             "Content-Type": "application/json"
@@ -302,25 +280,20 @@ async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-jul
             "channelType": "MONO",
             "sampleRate": 44100
         }
-
         murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
         if murf_resp.status_code != 200:
             raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
-        
         murf_result = murf_resp.json()
         audio_url = murf_result.get("audioFile")
         if not audio_url:
             raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
-
         print(f"Generated Murf audio: {audio_url}")
         print("=== ECHO BOT END ===")
-
         return {
             "success": True,
             "transcript": transcribed_text,
             "audio_url": audio_url
         }
-
     except HTTPException:
         raise
     except Exception as e:
@@ -328,32 +301,30 @@ async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-jul
         print(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
 
-# Create Gemini client (will use GEMINI_API_KEY from environment)
+# Day 8: Integrating a Large Language Model (LLM)
+# - Gemini API key and client setup
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Request body model
+# Request body model for LLM
 class QueryRequest(BaseModel):
     text: str
 
+# Day 8: LLM query endpoint
 @app.post("/llm/query")
 async def llm_query(request: QueryRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
-
     try:
         # Call Gemini API
         response = client.models.generate_content(
             model="gemini-2.0-flash",  # You can change to gemini-pro or gemini-2.5-flash
             contents=request.text
         )
-
         # Get text output
         output_text = getattr(response, "text", None)
         if not output_text:
             output_text = str(response)
-
         return {"input": request.text, "output": output_text}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
