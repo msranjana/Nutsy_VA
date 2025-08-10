@@ -165,8 +165,8 @@ async function startRecording() {
             const playbackSection = document.getElementById('playbackSection');
             playbackSection.style.display = 'block';
             
-            // Process through Echo Bot v2
-            await processEchoBotV2();
+            // Process through LLM Audio Bot (Day 9)
+            await processLLMAudioBot();
         });
         
         mediaRecorder.start();
@@ -216,6 +216,55 @@ function updateRecordingUI(isRecording) {
     }
 }
 
+async function processLLMAudioBot() {
+    try {
+        const playbackAudio = document.getElementById('playbackAudio');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const selectedVoice = voiceSelect ? voiceSelect.value : 'en-US-julia';
+
+        playbackAudio.style.opacity = '0.5';
+        showUploadStatus('uploading', 'Processing...', 'Transcribing, LLM, and generating speech...');
+
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        formData.append('voice_id', selectedVoice);
+
+        const response = await fetch('/llm/query', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(`LLM Audio Bot failed: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+        }
+
+        const result = await response.json();
+        console.log('LLM Audio Bot response:', result);
+
+        if (result.success && result.audio_urls && result.audio_urls.length > 0) {
+            playbackAudio.src = result.audio_urls[0];
+            playbackAudio.style.opacity = '1';
+            if (result.llm_response) {
+                showTranscriptionResult(result.llm_response);
+            }
+            try {
+                await playbackAudio.play();
+                showUploadStatus('success', 'LLM Audio Bot Complete!', 'LLM response generated and played.');
+            } catch (playError) {
+                showUploadStatus('success', 'LLM Audio Bot Complete!', 'Click play to hear the AI-generated response.');
+            }
+        } else {
+            throw new Error('No audio URL returned from LLM Audio Bot');
+        }
+    } catch (error) {
+        console.error('LLM Audio Bot error:', error);
+        const playbackAudio = document.getElementById('playbackAudio');
+        playbackAudio.style.opacity = '1';
+        showUploadStatus('error', 'LLM Audio Bot Failed', error.message);
+    }
+}
+
 async function processEchoBotV2() {
     try {
         const playbackAudio = document.getElementById('playbackAudio');
@@ -256,10 +305,12 @@ async function processEchoBotV2() {
             playbackAudio.style.opacity = '1';
             
             // Show the transcription
-            if (result.transcript) {
+            if (result.llm_response) {
+                showTranscriptionResult(result.llm_response);
+            } else if (result.transcript) {
                 showTranscriptionResult(result.transcript);
             }
-            
+
             // Auto-play the Murf-generated audio
             try {
                 await playbackAudio.play();

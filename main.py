@@ -308,23 +308,84 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Request body model for LLM
 class QueryRequest(BaseModel):
+
     text: str
 
-# Day 8: LLM query endpoint
+
+    # (Day 8 endpoint removed; only Day 9 audio-based endpoint remains)
+
+# Day 9: LLM Audio Query Endpoint
 @app.post("/llm/query")
-async def llm_query(request: QueryRequest):
-    if not request.text.strip():
-        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+async def llm_query(
+    file: UploadFile = File(...),
+    voice_id: str = Form("en-US-julia")
+):
+    """
+    Accepts audio, transcribes it, sends transcript to LLM, then TTS with Murf.
+    Returns the generated audio file URL.
+    """
     try:
-        # Call Gemini API
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",  # You can change to gemini-pro or gemini-2.5-flash
-            contents=request.text
+        # 1. Transcribe audio
+        audio_data = await file.read()
+        if not audio_data:
+            raise HTTPException(status_code=400, detail="Empty audio file received")
+        if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
+            raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_data)
+        if transcript.status == aai.TranscriptStatus.error:
+            raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
+        transcribed_text = transcript.text.strip()
+        if not transcribed_text:
+            raise HTTPException(status_code=400, detail="No speech detected in the audio")
+
+        # 2. Send transcript to LLM
+        llm_response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=transcribed_text
         )
-        # Get text output
-        output_text = getattr(response, "text", None)
-        if not output_text:
-            output_text = str(response)
-        return {"input": request.text, "output": output_text}
+
+        llm_text = getattr(llm_response, "text", None)
+        if not llm_text:
+            llm_text = str(llm_response)
+        llm_text = llm_text.strip()
+        print("Gemini LLM response:", repr(llm_text))
+
+
+        # 3. Murf TTS (handle >3000 chars)
+        murf_audio_urls = []
+        max_chars = 3000
+        for i in range(0, len(llm_text), max_chars):
+            chunk = llm_text[i:i+max_chars]
+            headers = {
+                "api-key": MURF_API_KEY,
+                "Content-Type": "application/json"
+            }
+            data = {
+                "text": chunk,
+                "voiceId": voice_id,
+                "format": "MP3",
+                "channelType": "MONO",
+                "sampleRate": 44100
+            }
+            murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
+            if murf_resp.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
+            murf_result = murf_resp.json()
+            audio_url = murf_result.get("audioFile")
+            if not audio_url:
+                raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
+            murf_audio_urls.append(audio_url)
+
+        # 4. Return the first audio URL (or all, if you want to concatenate on the client)
+        return {
+            "success": True,
+            "transcript": transcribed_text,
+            "llm_response": llm_text,
+            "audio_urls": murf_audio_urls
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"LLM audio query failed: {str(e)}")
