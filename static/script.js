@@ -1,3 +1,13 @@
+// Ensure a persistent session_id globally accessible
+if (!window.sessionStorage.getItem("session_id")) {
+    const newSessionId = crypto.randomUUID();
+    window.sessionStorage.setItem("session_id", newSessionId);
+    const url = new URL(window.location.href);
+    url.searchParams.set("session_id", newSessionId);
+    window.history.replaceState({}, "", url);
+}
+const sessionId = window.sessionStorage.getItem("session_id");
+
 async function generateSpeech() {
     const textInput = document.getElementById('textInput');
     const voiceSelect = document.getElementById('voiceSelect');
@@ -10,12 +20,12 @@ async function generateSpeech() {
     
     const text = textInput.value.trim();
     const voiceId = voiceSelect.value;
-    
+
     if (!text) {
         alert('Please enter some text to convert to speech.');
         return;
     }
-    
+
     // Show loading, disable button
     generateButton.disabled = true;
     generateButton.textContent = 'Generating...';
@@ -229,10 +239,15 @@ async function processLLMAudioBot() {
         formData.append('file', audioBlob, 'recording.webm');
         formData.append('voice_id', selectedVoice);
 
-        const response = await fetch('/llm/query', {
-            method: 'POST',
-            body: formData
-        });
+        // const response = await fetch('/llm/query', {
+        //     method: 'POST',
+        //     body: formData
+        // });
+const response = await fetch(`/agent/chat/${sessionId}`, {
+    method: 'POST',
+    body: formData
+});
+
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -251,6 +266,13 @@ async function processLLMAudioBot() {
             try {
                 await playbackAudio.play();
                 showUploadStatus('success', 'LLM Audio Bot Complete!', 'LLM response generated and played.');
+
+                // Auto-start recording when assistant’s reply finishes
+playbackAudio.onended = () => {
+    console.log("Assistant finished speaking. Starting new recording...");
+    startRecording();
+};
+
             } catch (playError) {
                 showUploadStatus('success', 'LLM Audio Bot Complete!', 'Click play to hear the AI-generated response.');
             }

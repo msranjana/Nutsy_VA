@@ -14,6 +14,9 @@ from pathlib import Path
 import assemblyai as aai
 from google import genai
 from pydantic import BaseModel
+# Global, in-memory chat history (prototype only)
+from typing import Dict, List
+chat_history_store: Dict[str, List[Dict[str, str]]] = {}
 
 
 # Load environment variables
@@ -389,3 +392,76 @@ async def llm_query(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM audio query failed: {str(e)}")
+
+@app.post("/agent/chat/{session_id}")
+async def agent_chat(
+    session_id: str,
+    file: UploadFile = File(...),
+    voice_id: str = Form("en-US-julia")
+):
+    try:
+        # 1. Transcribe audio (STT)
+        audio_data = await file.read()
+        if not audio_data:
+            raise HTTPException(status_code=400, detail="Empty audio file received")
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_data)
+        if transcript.status == aai.TranscriptStatus.error:
+            raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
+        user_text = transcript.text.strip()
+        if not user_text:
+            raise HTTPException(status_code=400, detail="No speech detected in the audio")
+
+        # 2. Retrieve and update history
+        history = chat_history_store.setdefault(session_id, [])
+        history.append({"role": "user", "content": user_text})
+
+        # 3. Format history/context for LLM
+        context_text = "\n".join(
+            [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history]
+        )
+
+        # 4. Call LLM with context
+        llm_response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=context_text
+        )
+        llm_text = getattr(llm_response, "text", None) or str(llm_response)
+        llm_text = llm_text.strip()
+        history.append({"role": "assistant", "content": llm_text})
+
+        # 5. Text-to-speech (chunk if long)
+        murf_audio_urls = []
+        max_chars = 3000
+        for i in range(0, len(llm_text), max_chars):
+            chunk = llm_text[i:i+max_chars]
+            data = {
+                "text": chunk,
+                "voiceId": voice_id,
+                "format": "MP3",
+                "channelType": "MONO",
+                "sampleRate": 44100
+            }
+            headers = {
+                "api-key": MURF_API_KEY,
+                "Content-Type": "application/json"
+            }
+            murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
+            if murf_resp.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
+            audio_url = murf_resp.json().get("audioFile")
+            if not audio_url:
+                raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
+            murf_audio_urls.append(audio_url)
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "user_transcript": user_text,
+            "assistant_response": llm_text,
+            "audio_urls": murf_audio_urls
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent chat failed: {str(e)}")
