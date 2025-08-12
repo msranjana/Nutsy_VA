@@ -8,12 +8,13 @@ if (!window.sessionStorage.getItem("session_id")) {
 const sessionId = window.sessionStorage.getItem("session_id");
 
 function appendMessage(role, text) {
+    console.log(`💬 Appending ${role} message:`, text);
     const chatHistory = document.getElementById('chatHistory');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
     
     // Add prefix based on role
-    const prefix = role === 'user' ? 'YOU: ' : 'BOT: ';
+    const prefix = role === 'user' ? 'You: ' : 'BOT: ';
     messageDiv.textContent = `${prefix}${text}`;
     
     chatHistory.appendChild(messageDiv);
@@ -29,27 +30,28 @@ let audioBlob;
 let audioURL;
 
 async function startRecording() {
+    console.log('🎤 Starting recording...');
     try {
-        console.log('Starting recording...');
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
 
-        mediaRecorder.addEventListener('dataavailable', event => {
+        mediaRecorder.ondataavailable = (event) => {
             audioChunks.push(event.data);
-        });
+        };
 
-        mediaRecorder.addEventListener('stop', async () => {
-            audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+        mediaRecorder.onstop = async () => {
+            console.log('🛑 Recording stopped, processing audio...');
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioURL = URL.createObjectURL(audioBlob);
             await processLLMAudioBot();
-        });
+        };
 
         mediaRecorder.start();
         updateRecordingUI(true);
+        console.log('✅ Recording started successfully');
     } catch (error) {
-        console.error('Error starting recording:', error);
-        showUploadStatus('error', 'Recording Error', 'Could not start recording: ' + error.message);
+        console.error('❌ Error starting recording:', error);
     }
 }
 
@@ -73,36 +75,42 @@ function updateRecordingUI(isRecording) {
 
 async function processLLMAudioBot() {
     try {
-        const playbackAudio = document.getElementById('playbackAudio');
-        const voiceSelect = document.getElementById('voiceSelect');
-        const selectedVoice = voiceSelect ? voiceSelect.value : 'en-US-julia';
-
+        console.log('🤖 Processing audio with LLM Bot...');
         const formData = new FormData();
         formData.append('file', audioBlob, 'recording.webm');
-        formData.append('voice_id', selectedVoice);
+        formData.append('voice_id', 'en-US-julia');
 
+        console.log('📤 Sending audio to server...');
         const response = await fetch(`/agent/chat/${sessionId}`, {
             method: 'POST',
             body: formData
         });
 
         const result = await response.json();
-        if (result.success && result.audio_urls && result.audio_urls.length > 0) {
-            // Use the actual transcribed text instead of [Voice message]
-            appendMessage('user', result.user_transcript);
-            appendMessage('ai', result.assistant_response || result.llm_response || '(No reply)');
-            
-            playbackAudio.src = result.audio_urls[0];
-            await playbackAudio.play();
+        console.log('📥 Received response:', result);
 
-            playbackAudio.onended = () => {
-                startRecording();
-            };
+        if (result.success) {
+            console.log('🎯 Successfully processed audio');
+            console.log('👤 User said:', result.user_transcript);
+            console.log('🤖 Bot replied:', result.assistant_response);
+            
+            appendMessage('user', result.user_transcript);
+            appendMessage('ai', result.assistant_response);
+
+            if (result.audio_urls && result.audio_urls.length > 0) {
+                console.log('🔊 Playing bot response audio...');
+                const audio = new Audio(result.audio_urls[0]);
+                audio.onended = () => {
+                    console.log('🔄 Bot response finished, starting new recording...');
+                    startRecording();
+                };
+                audio.play();
+            }
         } else {
-            throw new Error('No audio URL returned from LLM Audio Bot');
+            console.error('❌ Server processing failed:', result);
         }
     } catch (error) {
-        console.error('LLM Audio Bot error:', error);
+        console.error('❌ Error in LLM Audio Bot:', error);
     }
 }
 
