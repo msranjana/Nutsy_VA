@@ -1,3 +1,17 @@
+const FALLBACK_MESSAGES = {
+    STT_ERROR: "I couldn't understand the audio. Could you try speaking again?",
+    LLM_ERROR: "I'm having trouble thinking right now. Could you try again in a moment?",
+    TTS_ERROR: "I understood you, but I'm having trouble speaking right now. Please try again.",
+    GENERIC_ERROR: "I'm having trouble connecting right now. Please try again."
+};
+
+const FALLBACK_AUDIO_URLS = {
+    STT_ERROR: "/static/audio/stt_error.mp3",
+    LLM_ERROR: "/static/audio/llm_error.mp3", 
+    TTS_ERROR: "/static/audio/tts_error.mp3",
+    GENERIC_ERROR: "/static/audio/generic_error.mp3"
+};
+
 if (!window.sessionStorage.getItem("session_id")) {
     const newSessionId = crypto.randomUUID();
     window.sessionStorage.setItem("session_id", newSessionId);
@@ -91,26 +105,45 @@ async function processLLMAudioBot() {
 
         if (result.success) {
             console.log('🎯 Successfully processed audio');
-            console.log('👤 User said:', result.user_transcript);
-            console.log('🤖 Bot replied:', result.assistant_response);
-            
             appendMessage('user', result.user_transcript);
             appendMessage('ai', result.assistant_response);
 
             if (result.audio_urls && result.audio_urls.length > 0) {
                 console.log('🔊 Playing bot response audio...');
-                const audio = new Audio(result.audio_urls[0]);
-                audio.onended = () => {
-                    console.log('🔄 Bot response finished, starting new recording...');
-                    startRecording();
-                };
-                audio.play();
+                playAudioResponse(result.audio_urls[0]);
             }
         } else {
-            console.error('❌ Server processing failed:', result);
+            console.error('❌ Error:', result.error);
+            appendMessage('system', result.fallback_response);
+            
+            if (result.fallback_audio) {
+                console.log('🔊 Playing fallback audio...');
+                playAudioResponse(result.fallback_audio);
+            }
         }
     } catch (error) {
-        console.error('❌ Error in LLM Audio Bot:', error);
+        console.error('❌ Critical error:', error);
+        appendMessage('system', FALLBACK_MESSAGES.GENERIC_ERROR);
+        playAudioResponse(FALLBACK_AUDIO_URL);
+    }
+}
+
+function playAudioResponse(audioUrl) {
+    try {
+        const audio = new Audio(audioUrl);
+        audio.onended = () => {
+            console.log('🔄 Audio finished, starting new recording...');
+            startRecording();
+        };
+        audio.onerror = (error) => {
+            console.error('❌ Audio playback error:', error);
+            // If audio fails, still allow new recording
+            startRecording();
+        };
+        audio.play();
+    } catch (error) {
+        console.error('❌ Audio setup error:', error);
+        startRecording();
     }
 }
 

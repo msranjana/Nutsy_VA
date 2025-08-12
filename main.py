@@ -305,9 +305,25 @@ async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-jul
         raise HTTPException(status_code=500, detail=error_detail)
 
 # Day 8: Integrating a Large Language Model (LLM)
-# - Gemini API key and client setup
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
+import google.generativeai as genai
+
+# Initialize Gemini
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("⚠️ Warning: Gemini API key not configured")
+else:
+    print(f"✅ Gemini API key loaded (length: {len(GEMINI_API_KEY)})")
+    
+    # Configure the Gemini client
+    genai.configure(api_key=GEMINI_API_KEY)
+    
+    # Create the model instance
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        print("✅ Gemini model initialized successfully")
+    except Exception as e:
+        print(f"❌ Failed to initialize Gemini model: {str(e)}")
+        model = None
 
 # Request body model for LLM
 class QueryRequest(BaseModel):
@@ -404,55 +420,83 @@ async def agent_chat(
         audio_data = await file.read()
         if not audio_data:
             raise HTTPException(status_code=400, detail="Empty audio file received")
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_data)
-        if transcript.status == aai.TranscriptStatus.error:
-            raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
-        user_text = transcript.text.strip()
-        if not user_text:
-            raise HTTPException(status_code=400, detail="No speech detected in the audio")
-
-        # 2. Retrieve and update history
-        history = chat_history_store.setdefault(session_id, [])
-        history.append({"role": "user", "content": user_text})
-
-        # 3. Format history/context for LLM
-        context_text = "\n".join(
-            [f"{msg['role'].capitalize()}: {msg['content']}" for msg in history]
-        )
-
-        # 4. Call LLM with context
-        llm_response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=context_text
-        )
-        llm_text = getattr(llm_response, "text", None) or str(llm_response)
-        llm_text = llm_text.strip()
-        history.append({"role": "assistant", "content": llm_text})
-
-        # 5. Text-to-speech (chunk if long)
-        murf_audio_urls = []
-        max_chars = 3000
-        for i in range(0, len(llm_text), max_chars):
-            chunk = llm_text[i:i+max_chars]
-            data = {
-                "text": chunk,
-                "voiceId": voice_id,
-                "format": "MP3",
-                "channelType": "MONO",
-                "sampleRate": 44100
+        
+        try:
+            transcriber = aai.Transcriber()
+            transcript = transcriber.transcribe(audio_data)
+            if transcript.status == aai.TranscriptStatus.error:
+                raise Exception(f"Transcription failed: {transcript.error}")
+            user_text = transcript.text.strip()
+        except Exception as e:
+            print(f"STT Error: {str(e)}")
+            fallback_text = FALLBACK_MESSAGES["STT_ERROR"]
+            fallback_audio = await generate_murf_audio(fallback_text, voice_id)
+            return {
+                "success": False,
+                "error": "stt_error",
+                "message": "Speech-to-text failed",
+                "fallback_response": fallback_text,
+                "fallback_audio": fallback_audio
             }
-            headers = {
-                "api-key": MURF_API_KEY,
-                "Content-Type": "application/json"
+
+        # 2. Call LLM
+        try:
+            if not model:
+                raise Exception("Gemini model not initialized")
+                
+            history = chat_history_store.setdefault(session_id, [])
+            history.append({"role": "user", "content": user_text})
+            context_text = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history])
+            
+            llm_response = model.generate_content(context_text)
+            llm_text = getattr(llm_response, "text", None) or str(llm_response)
+            llm_text = llm_text.strip()
+            history.append({"role": "assistant", "content": llm_text})
+        except Exception as e:
+            print(f"LLM Error: {str(e)}")
+            fallback_text = FALLBACK_MESSAGES["LLM_ERROR"]
+            fallback_audio = await generate_murf_audio(fallback_text, voice_id)
+            return {
+                "success": False,
+                "error": "llm_error",
+                "message": "Language model failed",
+                "fallback_response": fallback_text,
+                "fallback_audio": fallback_audio
             }
-            murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
-            if murf_resp.status_code != 200:
-                raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
-            audio_url = murf_resp.json().get("audioFile")
-            if not audio_url:
-                raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
-            murf_audio_urls.append(audio_url)
+
+        # 3. Text-to-speech
+        try:
+            murf_audio_urls = []
+            max_chars = 3000
+            for i in range(0, len(llm_text), max_chars):
+                chunk = llm_text[i:i+max_chars]
+                headers = {
+                    "api-key": MURF_API_KEY,
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "text": chunk,
+                    "voiceId": voice_id,
+                    "format": "MP3",
+                    "channelType": "MONO",
+                    "sampleRate": 44100
+                }
+                murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
+                if murf_resp.status_code != 200:
+                    raise Exception(f"Murf API error: {murf_resp.text}")
+                audio_url = murf_resp.json().get("audioFile")
+                if not audio_url:
+                    raise Exception("No audio URL returned from Murf")
+                murf_audio_urls.append(audio_url)
+        except Exception as e:
+            print(f"TTS Error: {str(e)}")
+            return {
+                "success": False,
+                "error": "tts_error",
+                "message": "Text-to-speech failed",
+                "fallback_response": FALLBACK_MESSAGES["TTS_ERROR"],
+                "fallback_audio": FALLBACK_AUDIO_URL
+            }
 
         return {
             "success": True,
@@ -461,7 +505,20 @@ async def agent_chat(
             "assistant_response": llm_text,
             "audio_urls": murf_audio_urls
         }
-    except HTTPException:
-        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent chat failed: {str(e)}")
+        print(f"Unexpected error: {str(e)}")
+        return {
+            "success": False,
+            "error": "generic_error",
+            "message": str(e),
+            "fallback_response": FALLBACK_MESSAGES["GENERIC_ERROR"],
+            "fallback_audio": FALLBACK_AUDIO_URL
+        }
+
+FALLBACK_MESSAGES = {
+    "STT_ERROR": "I couldn't understand the audio. Could you try speaking again?",
+    "LLM_ERROR": "I'm having trouble thinking right now. Could you try again in a moment?",
+    "TTS_ERROR": "I understood you, but I'm having trouble speaking right now. Please try again.",
+    "GENERIC_ERROR": "I'm having trouble connecting right now. Please try again."
+}
