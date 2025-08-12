@@ -12,12 +12,9 @@ function appendMessage(role, text) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
     
-    // Use the actual transcribed text for user messages
-    if (role === 'user') {
-        messageDiv.textContent = text;
-    } else {
-        messageDiv.textContent = text;
-    }
+    // Add prefix based on role
+    const prefix = role === 'user' ? 'YOU: ' : 'BOT: ';
+    messageDiv.textContent = `${prefix}${text}`;
     
     chatHistory.appendChild(messageDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -136,3 +133,43 @@ async function sendAudio(fileBlob) {
         console.error("Error:", error);
     }
 }
+
+// Add this near the top of the file, after sessionId initialization
+document.addEventListener('DOMContentLoaded', () => {
+    const generateButton = document.querySelector('.generate-button');
+    if (generateButton) {
+        generateButton.addEventListener('click', async () => {
+            const textInput = document.getElementById('textInput');
+            const voiceSelect = document.getElementById('voiceSelect');
+            
+            if (!textInput || !textInput.value.trim()) {
+                console.error('No text to generate speech from');
+                return;
+            }
+
+            try {
+                const response = await fetch('/tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: textInput.value.trim(),
+                        voice_id: voiceSelect ? voiceSelect.value : 'en-US-julia'
+                    })
+                });
+
+                const result = await response.json();
+                if (result.audio_url) {
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    if (audioPlayer) {
+                        audioPlayer.src = result.audio_url;
+                        document.getElementById('audioSection').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error generating speech:', error);
+            }
+        });
+    }
+});
