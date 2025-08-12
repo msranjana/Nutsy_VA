@@ -57,62 +57,37 @@
             </div>
             
             <!-- Right Side - Echo Bot Section -->
-            <div class="echo-section">
-                <div class="content">
-                    <h1 class="title">Echo Bot v2</h1>
-                    <p class="description">
-                        Record your voice and hear it played back using AI voice synthesis!
-                    </p>
-                    
-                    <div class="recording-controls">
-                        <button id="startRecording" class="record-button start" onclick="startRecording()">
-                            🎙️ Start Recording
-                        </button>
-                        <button id="stopRecording" class="record-button stop" onclick="stopRecording()" disabled>
-                            ⏹️ Stop Recording
-                        </button>
-                    </div>
-                    
-                    <div id="recordingStatus" class="recording-status" style="display: none;">
-                        <div class="recording-indicator">
-                            <div class="pulse"></div>
-                            <span>Recording...</span>
-                        </div>
-                    </div>
-                    
-                    <div id="playbackSection" class="playback-section" style="display: none;">
-                        <h3>AI-Generated Playback:</h3>
-                        <audio id="playbackAudio" controls>
-                            Your browser does not support the audio element.
-                        </audio>
-                        
-                        <!-- <div class="upload-controls">
-                            <button id="uploadButton" class="upload-button" onclick="uploadRecording()">
-                                📤 Upload Recording
-                            </button>
-                            <button id="transcribeButton" class="transcribe-button" onclick="transcribeRecording()">
-                                📝 Transcribe Only
-                            </button>
-                        </div> -->
-                        
-                        <div id="uploadStatus" class="upload-status" style="display: none;">
-                            <div class="status-content">
-                                <div class="status-icon"></div>
-                                <div class="status-message"></div>
-                                <div class="status-details"></div>
-                            </div>
-                        </div>
-                        
-                        <div id="transcriptionSection" class="transcription-section" style="display: none;">
-                            <h4>Transcription:</h4>
-                            <div class="transcription-content">
-                                <div id="transcriptionText" class="transcription-text"></div>
-                                <div id="transcriptionInfo" class="transcription-info"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Right Side - Chat Agent Section -->
+<div class="chat-section">
+  <div class="content">
+    <h1 class="title">Voice Agent Chat</h1>
+    <p class="description">
+      Converse by voice — each turn is shown in chat below. AI responds using context memory!
+    </p>
+
+    <!-- Chat history appears here -->
+    <div id="chatHistory" class="chat-history"></div>
+    
+    <!-- Chat controls -->
+    <div class="chat-controls">
+      <button id="startRecording" class="record-button start" onclick="startRecording()">
+        🎙️ Speak
+      </button>
+      <button id="stopRecording" class="record-button stop" onclick="stopRecording()" disabled>
+        ⏹️ Stop
+      </button>
+      <!-- Optionally add keyboard input for manual testing -->
+      <!--
+      <input type="text" id="textMessage" placeholder="Type a message..." />
+      <button onclick="sendTextMessage()">Send</button>
+      -->
+    </div>
+
+    <!-- Audio player for agent responses -->
+    <audio id="playbackAudio" controls style="display:none"></audio>
+  </div>
+</div>
+
         </div>
     </div>
     <script src="/static/script.js?v=5"></script>
