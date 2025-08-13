@@ -35,9 +35,7 @@ function appendMessage(role, text) {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-// No legacy TTS functionality needed
-
-// Echo Bot Recording Functionality
+// Voice Chat Recording Functionality
 let mediaRecorder;
 let audioChunks = [];
 let audioBlob;

@@ -307,23 +307,57 @@ async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-jul
 # Day 8: Integrating a Large Language Model (LLM)
 import google.generativeai as genai
 
-# Initialize Gemini
+# Update Gemini configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     print("⚠️ Warning: Gemini API key not configured")
 else:
     print(f"✅ Gemini API key loaded (length: {len(GEMINI_API_KEY)})")
     
-    # Configure the Gemini client
-    genai.configure(api_key=GEMINI_API_KEY)
-    
-    # Create the model instance
-    try:
-        model = genai.GenerativeModel('gemini-pro')
-        print("✅ Gemini model initialized successfully")
-    except Exception as e:
-        print(f"❌ Failed to initialize Gemini model: {str(e)}")
-        model = None
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Initialize the Gemini model with safety settings
+generation_config = {
+    "temperature": 0.9,
+    "top_p": 1,
+    "top_k": 1,
+    "max_output_tokens": 2048,
+}
+
+safety_settings = [
+    {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "BLOCK_NONE"
+    },
+]
+
+try:
+    # Initialize both models - Flash-Lite for quick responses and Pro for complex tasks
+    model_flash = genai.GenerativeModel(model_name="gemini-2.5-flash-lite",
+                                      generation_config=generation_config,
+                                      safety_settings=safety_settings)
+    model_pro = genai.GenerativeModel(model_name="gemini-1.0-pro",
+                                     generation_config=generation_config,
+                                     safety_settings=safety_settings)
+    print("✅ Gemini models initialized successfully")
+    print("   - Gemini 2.5 Flash-Lite for quick responses")
+    print("   - Gemini Pro for complex tasks")
+except Exception as e:
+    print(f"❌ Failed to initialize Gemini models: {str(e)}")
+    model_flash = None
+    model_pro = None
 
 # Request body model for LLM
 class QueryRequest(BaseModel):
@@ -430,39 +464,53 @@ async def agent_chat(
         except Exception as e:
             print(f"STT Error: {str(e)}")
             fallback_text = FALLBACK_MESSAGES["STT_ERROR"]
-            fallback_audio = await generate_murf_audio(fallback_text, voice_id)
+            try:
+                fallback_audio = await generate_murf_audio(fallback_text, voice_id)
+            except:
+                fallback_audio = FALLBACK_AUDIO_URLS["STT_ERROR"]  # Use static fallback if dynamic generation fails
             return {
                 "success": False,
                 "error": "stt_error",
                 "message": "Speech-to-text failed",
                 "fallback_response": fallback_text,
-                "fallback_audio": fallback_audio
+                "audio_urls": [fallback_audio]
             }
 
         # 2. Call LLM
         try:
-            if not model:
-                raise Exception("Gemini model not initialized")
-                
+            if not model_flash:
+                raise Exception("Gemini Flash-Lite model not initialized")
+            
             history = chat_history_store.setdefault(session_id, [])
             history.append({"role": "user", "content": user_text})
             context_text = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history])
             
-            llm_response = model.generate_content(context_text)
-            llm_text = getattr(llm_response, "text", None) or str(llm_response)
-            llm_text = llm_text.strip()
+            # Use Flash-Lite model for faster responses
+            response = model_flash.generate_content(context_text)
+            llm_text = response.text.strip()
             history.append({"role": "assistant", "content": llm_text})
         except Exception as e:
-            print(f"LLM Error: {str(e)}")
-            fallback_text = FALLBACK_MESSAGES["LLM_ERROR"]
-            fallback_audio = await generate_murf_audio(fallback_text, voice_id)
-            return {
-                "success": False,
-                "error": "llm_error",
-                "message": "Language model failed",
-                "fallback_response": fallback_text,
-                "fallback_audio": fallback_audio
-            }
+            print(f"LLM Error with Flash-Lite: {str(e)}")
+            try:
+                # Fallback to Pro model if Flash-Lite fails
+                if model_pro:
+                    print("Falling back to Gemini Pro model...")
+                    response = model_pro.generate_content(context_text)
+                    llm_text = response.text.strip()
+                    history.append({"role": "assistant", "content": llm_text})
+                else:
+                    raise Exception("No available models")
+            except Exception as fallback_error:
+                print(f"LLM Fallback Error: {str(fallback_error)}")
+                fallback_text = FALLBACK_MESSAGES["LLM_ERROR"]
+                fallback_audio = await generate_murf_audio(fallback_text, voice_id)
+                return {
+                    "success": False,
+                    "error": "llm_error",
+                    "message": "Language model failed",
+                    "fallback_response": fallback_text,
+                    "audio_urls": [fallback_audio] if fallback_audio else []
+                }
 
         # 3. Text-to-speech
         try:
@@ -522,3 +570,37 @@ FALLBACK_MESSAGES = {
     "TTS_ERROR": "I understood you, but I'm having trouble speaking right now. Please try again.",
     "GENERIC_ERROR": "I'm having trouble connecting right now. Please try again."
 }
+
+# Default fallback audio URL - this will be used if dynamic generation fails
+FALLBACK_AUDIO_URL = "https://storage.googleapis.com/murf-public-data/static/error_fallback.mp3"
+
+# Create dictionary of fallback audio URLs
+FALLBACK_AUDIO_URLS = {
+    "STT_ERROR": FALLBACK_AUDIO_URL,
+    "LLM_ERROR": FALLBACK_AUDIO_URL,
+    "TTS_ERROR": FALLBACK_AUDIO_URL,
+    "GENERIC_ERROR": FALLBACK_AUDIO_URL
+}
+
+async def generate_murf_audio(text: str, voice_id: str = "en-US-julia") -> str:
+    """Generate audio using Murf TTS API"""
+    try:
+        headers = {
+            "api-key": MURF_API_KEY,
+            "Content-Type": "application/json"
+        }
+        data = {
+            "text": text,
+            "voiceId": voice_id,
+            "format": "MP3",
+            "channelType": "MONO",
+            "sampleRate": 44100
+        }
+        response = requests.post(MURF_API_URL, json=data, headers=headers)
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("audioFile")
+        return FALLBACK_AUDIO_URL  # Return default fallback if Murf fails
+    except Exception as e:
+        print(f"Murf TTS Error: {str(e)}")
+        return FALLBACK_AUDIO_URL  # Return default fallback on error
