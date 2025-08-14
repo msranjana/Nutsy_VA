@@ -21,15 +21,18 @@ body {
     width: 100%;
 }
 
-/* Main layout */
+/* Updated main layout for two columns */
 .main-layout {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
     min-height: calc(100vh - 40px);
+    align-items: start;
 }
 
-/* Chat section styling */
-.chat-section {
+/* Separate styling for TTS and Echo sections */
+.tts-section,
+.echo-section {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 20px;
@@ -37,8 +40,6 @@ body {
     overflow: hidden;
     height: fit-content;
     min-height: 500px;
-    width: 100%;
-    max-width: 800px;
 }
 
 .content {
