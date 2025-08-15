@@ -319,7 +319,7 @@ else:
     
     # Create the model instance
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         print("✅ Gemini model initialized successfully")
     except Exception as e:
         print(f"❌ Failed to initialize Gemini model: {str(e)}")
