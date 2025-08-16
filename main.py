@@ -2,7 +2,7 @@
 # - Initialize FastAPI backend
 # - Serve index.html and static files for frontend (HTML/JS)
 # - Basic server setup
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, WebSocket
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -522,3 +522,11 @@ FALLBACK_MESSAGES = {
     "TTS_ERROR": "I understood you, but I'm having trouble speaking right now. Please try again.",
     "GENERIC_ERROR": "I'm having trouble connecting right now. Please try again."
 }
+
+#day15
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Echo: {data}")
