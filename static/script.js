@@ -43,15 +43,51 @@ let audioChunks = [];
 let audioBlob;
 let audioURL;
 
+let socket;
+
+// Initialize WebSocket connection
+function initWebSocket() {
+    socket = new WebSocket("ws://localhost:8000/ws");
+    
+    socket.onopen = () => {
+        console.log("🌐 WebSocket connected");
+    };
+    
+    socket.onclose = () => {
+        console.log("🔌 WebSocket disconnected");
+        // Attempt to reconnect after 3 seconds
+        setTimeout(initWebSocket, 3000);
+    };
+    
+    socket.onerror = (error) => {
+        console.error("❌ WebSocket error:", error);
+    };
+}
+
 async function startRecording() {
     console.log('🎤 Starting recording...');
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
         audioChunks = [];
 
+        // WebSocket streaming setup
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            initWebSocket();
+        }
+
         mediaRecorder.ondataavailable = (event) => {
+            // Store chunks for local processing
             audioChunks.push(event.data);
+            
+            // Stream to WebSocket if connected
+            if (event.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+                event.data.arrayBuffer().then(buffer => {
+                    socket.send(buffer);
+                }).catch(error => {
+                    console.error("❌ Error converting to buffer:", error);
+                });
+            }
         };
 
         mediaRecorder.onstop = async () => {
@@ -59,9 +95,14 @@ async function startRecording() {
             audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             audioURL = URL.createObjectURL(audioBlob);
             await processLLMAudioBot();
+            
+            // Close WebSocket connection
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
         };
 
-        mediaRecorder.start();
+        mediaRecorder.start(250); // Send chunks every 250ms
         updateRecordingUI(true);
         console.log('✅ Recording started successfully');
     } catch (error) {
@@ -77,6 +118,11 @@ async function stopRecording() {
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
     }
     updateRecordingUI(false);
+    
+    // Close WebSocket connection
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+    }
 }
 
 function updateRecordingUI(isRecording) {
@@ -213,4 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // Initialize WebSocket connection
+    initWebSocket();
 });
+

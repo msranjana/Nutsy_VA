@@ -14,6 +14,8 @@ from pathlib import Path
 import assemblyai as aai
 from google import genai
 from pydantic import BaseModel
+import asyncio
+
 # Global, in-memory chat history (prototype only)
 from typing import Dict, List
 chat_history_store: Dict[str, List[Dict[str, str]]] = {}
@@ -523,10 +525,37 @@ FALLBACK_MESSAGES = {
     "GENERIC_ERROR": "I'm having trouble connecting right now. Please try again."
 }
 
-#day15
+#day15-16
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(f"Echo: {data}")
+    """Handle WebSocket connections for real-time audio streaming"""
+    try:
+        await websocket.accept()
+        print("✅ WebSocket connection established")
+        
+        # Create an audio buffer
+        audio_buffer = []
+        
+        # Process incoming audio chunks
+        async for data in websocket.iter_bytes():
+            print(f"📥 Received audio chunk: {len(data)} bytes")
+            audio_buffer.append(data)
+            
+            # Optional: Process audio when buffer reaches certain size
+            if len(audio_buffer) >= 10:  # Adjust based on your needs
+                try:
+                    # Process accumulated audio data
+                    audio_data = b''.join(audio_buffer)
+                    # TODO: Add your audio processing logic here
+                    audio_buffer = []  # Clear buffer after processing
+                except Exception as e:
+                    print(f"❌ Error processing audio: {str(e)}")
+                    
+    except Exception as e:
+        print(f"❌ WebSocket error: {str(e)}")
+    finally:
+        try:
+            await websocket.close()
+            print("🔌 WebSocket connection closed")
+        except:
+            pass
