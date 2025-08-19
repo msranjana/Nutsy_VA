@@ -1,531 +1,13 @@
-# Day 1: Project Setup
-# - Initialize FastAPI backend
-# - Serve index.html and static files for frontend (HTML/JS)
-# - Basic server setup
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form, WebSocket
-from fastapi.responses import HTMLResponse, JSONResponse
+#AI Voice Agent Backend
+# --- IMPORTS AND SETUP ---
+from fastapi import FastAPI, UploadFile, File, Request, Path, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from dotenv import load_dotenv
 import requests
 import os
-from dotenv import load_dotenv
-import uuid
-from pathlib import Path
 import assemblyai as aai
-from google import genai
-from pydantic import BaseModel
-import asyncio
-
-# Global, in-memory chat history (prototype only)
-from typing import Dict, List, Type
-chat_history_store: Dict[str, List[Dict[str, str]]] = {}
-
-
-# Load environment variables
-load_dotenv()
-
-# Initialize FastAPI app
-app = FastAPI()
-
-# Day 5: Send Audio to the Server
-# - Create uploads directory if it doesn't exist
-uploads_dir = Path("uploads")
-uploads_dir.mkdir(exist_ok=True)
-
-# Mount static files and templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-
-# Day 2: Your First REST TTS Call
-# - Murf API key and endpoint setup
-MURF_API_KEY = os.getenv("MURF_API_KEY", "YOUR_MURF_API_KEY")
-MURF_API_URL = "https://api.murf.ai/v1/speech/generate"  # Correct Murf API endpoint
-
-# Day 6: Implement Server-Side Transcription
-# - AssemblyAI configuration
-ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY", "YOUR_ASSEMBLYAI_API_KEY")
-aai.settings.api_key = ASSEMBLYAI_API_KEY
-
-# Debug print to verify API key is loaded
-print(f"AssemblyAI API Key loaded: {'Yes' if ASSEMBLYAI_API_KEY and ASSEMBLYAI_API_KEY != 'YOUR_ASSEMBLYAI_API_KEY' else 'No'}")
-print(f"API Key length: {len(ASSEMBLYAI_API_KEY) if ASSEMBLYAI_API_KEY else 0}")
-print(f"API Key first 10 chars: {ASSEMBLYAI_API_KEY[:10] if ASSEMBLYAI_API_KEY else 'None'}")
-
-# Day 1: Serve index.html
-@app.get("/", response_class=HTMLResponse)
-async def read_index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-# (Optional) Debug endpoint
-@app.get("/debug")
-async def debug_info():
-    return {
-        "murf_api_key_set": bool(MURF_API_KEY and MURF_API_KEY != "YOUR_MURF_API_KEY"),
-        "murf_api_url": MURF_API_URL,
-        "murf_api_key_length": len(MURF_API_KEY) if MURF_API_KEY else 0,
-        "assemblyai_api_key_set": bool(ASSEMBLYAI_API_KEY and ASSEMBLYAI_API_KEY != "YOUR_ASSEMBLYAI_API_KEY"),
-        "assemblyai_api_key_length": len(ASSEMBLYAI_API_KEY) if ASSEMBLYAI_API_KEY else 0,
-        "assemblyai_api_key_preview": ASSEMBLYAI_API_KEY[:10] + "..." if ASSEMBLYAI_API_KEY and len(ASSEMBLYAI_API_KEY) > 10 else "Not set"
-    }
-
-# (Optional) Get available voices
-@app.get("/voices")
-async def get_voices():
-    """Get available Murf voices"""
-    try:
-        headers = {
-            "api-key": MURF_API_KEY,
-            "Content-Type": "application/json"
-        }
-        response = requests.get("https://api.murf.ai/v1/speech/voices", headers=headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise HTTPException(status_code=500, detail=f"Failed to fetch voices: {response.text}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching voices: {str(e)}")
-
-# Day 2: TTS endpoint for Murf API
-@app.post("/tts")
-async def text_to_speech(payload: dict):
-    text = payload.get("text")
-    voice_id = payload.get("voice_id", "en-US-julia")  # Default voice
-    if not text:
-        raise HTTPException(status_code=400, detail="Missing text")
-    headers = {
-        "api-key": MURF_API_KEY,  # Murf uses 'api-key' header, not 'Authorization'
-        "Content-Type": "application/json"
-    }
-    data = {
-        "text": text,
-        "voiceId": voice_id,
-        "format": "MP3",
-        "channelType": "MONO",
-        "sampleRate": 44100
-    }
-    try:
-        print(f"Making request to Murf API: {MURF_API_URL}")
-        print(f"Headers: {headers}")
-        print(f"Data: {data}")
-        response = requests.post(MURF_API_URL, json=data, headers=headers)
-        print(f"Response status code: {response.status_code}")
-        print(f"Response content: {response.text}")
-        if response.status_code != 200:
-            error_detail = f"Murf API returned status {response.status_code}: {response.text}"
-            print(f"Error: {error_detail}")
-            raise HTTPException(status_code=500, detail=f"Failed to generate audio: {error_detail}")
-        result = response.json()
-        audio_url = result.get("audioFile")  # Murf returns 'audioFile', not 'audio_url'
-        if not audio_url:
-            print(f"No audioFile in response: {result}")
-            raise HTTPException(status_code=500, detail="No audio URL returned from Murf API")
-        return {
-            "audio_url": audio_url,
-            "audio_length": result.get("audioLengthInSeconds"),
-            "consumed_characters": result.get("consumedCharacterCount"),
-            "remaining_characters": result.get("remainingCharacterCount")
-        }
-        
-    except requests.exceptions.RequestException as e:
-        error_detail = f"Request failed: {str(e)}"
-        print(f"Request exception: {error_detail}")
-        raise HTTPException(status_code=500, detail=f"Failed to connect to Murf API: {error_detail}")
-    except Exception as e:
-        error_detail = f"Unexpected error: {str(e)}"
-        print(f"Unexpected exception: {error_detail}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {error_detail}")
-
-# Day 5: Upload audio endpoint
-@app.post("/upload-audio")
-async def upload_audio(file: UploadFile = File(...)):
-    """Upload and save audio file temporarily"""
-    try:
-        print(f"=== UPLOAD DEBUG START ===")
-        print(f"Received file: {file.filename}")
-        print(f"Content type: {file.content_type}")
-        print(f"File size: {file.size if hasattr(file, 'size') else 'Unknown'}")
-        # Read file content first to get actual size
-        content = await file.read()
-        file_size = len(content)
-        print(f"Actual file size: {file_size} bytes")
-        # Validate file size
-        if file_size == 0:
-            raise HTTPException(status_code=400, detail="Empty file received")
-        # Validate file type - be more lenient for browser recordings
-        if not file.content_type:
-            print("No content type provided, assuming audio/webm for browser recording")
-            # For browser recordings without content type, assume it's audio
-        elif not (file.content_type.startswith('audio/') or 
-                 file.content_type == 'application/octet-stream' or
-                 'webm' in file.content_type):
-            raise HTTPException(status_code=400, detail=f"File must be an audio file. Received: {file.content_type}")
-        # Generate unique filename
-        file_extension = ".webm"  # Default for browser recordings
-        if file.filename:
-            original_extension = Path(file.filename).suffix
-            if original_extension:
-                file_extension = original_extension
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = uploads_dir / unique_filename
-        # Save file
-        with open(file_path, "wb") as f:
-            f.write(content)
-        print(f"Audio file uploaded successfully: {unique_filename}, Size: {file_size} bytes")
-        print(f"=== UPLOAD DEBUG END ===")
-        return {
-            "success": True,
-            "filename": unique_filename,
-            "original_filename": file.filename or "recording.webm",
-            "content_type": file.content_type,
-            "size": file_size,
-            "size_mb": round(file_size / (1024 * 1024), 2),
-            "message": "Audio file uploaded successfully"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        error_detail = f"Upload failed: {str(e)}"
-        print(f"Upload exception: {error_detail}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload audio file: {error_detail}")
-
-# (Optional) Test upload endpoint
-@app.post("/test-upload")
-async def test_upload(file: UploadFile = File(...)):
-    """Simple test upload endpoint for debugging"""
-    try:
-        print(f"TEST UPLOAD - File received: {file.filename}")
-        print(f"TEST UPLOAD - Content type: {file.content_type}")
-        content = await file.read()
-        print(f"TEST UPLOAD - File size: {len(content)} bytes")
-        return {"status": "success", "filename": file.filename, "size": len(content)}
-    except Exception as e:
-        print(f"TEST UPLOAD - Error: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-# Day 6: Transcribe audio file endpoint (AssemblyAI)
-@app.post("/transcribe/file")
-async def transcribe_audio_file(file: UploadFile = File(...)):
-    """Transcribe audio file using AssemblyAI"""
-    try:
-        print(f"=== TRANSCRIPTION DEBUG START ===")
-        print(f"Received file for transcription: {file.filename}")
-        print(f"Content type: {file.content_type}")
-        # Read the audio file content
-        audio_data = await file.read()
-        file_size = len(audio_data)
-        print(f"Audio file size: {file_size} bytes")
-        # Validate file size
-        if file_size == 0:
-            raise HTTPException(status_code=400, detail="Empty audio file received")
-        # Validate API key
-        if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
-            raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
-        # Create transcriber instance
-        transcriber = aai.Transcriber()
-        print("Starting transcription with AssemblyAI...")
-        # Transcribe the audio data directly (no need to save file)
-        transcript = transcriber.transcribe(audio_data)
-        print(f"Transcription status: {transcript.status}")
-        # Check if transcription was successful
-        if transcript.status == aai.TranscriptStatus.error:
-            error_detail = f"Transcription failed: {transcript.error}"
-            print(f"AssemblyAI error: {error_detail}")
-            raise HTTPException(status_code=500, detail=error_detail)
-        print(f"Transcription completed successfully")
-        print(f"Transcript text (first 100 chars): {transcript.text[:100]}...")
-        print(f"=== TRANSCRIPTION DEBUG END ===")
-        return {
-            "success": True,
-            "transcript": transcript.text,
-            "confidence": getattr(transcript, 'confidence', None),
-            "audio_duration": getattr(transcript, 'audio_duration', None),
-            "word_count": len(transcript.text.split()) if transcript.text else 0,
-            "original_filename": file.filename or "recording.webm",
-            "message": "Audio transcription completed successfully"
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        error_detail = f"Transcription failed: {str(e)}"
-        print(f"Transcription exception: {error_detail}")
-        raise HTTPException(status_code=500, detail=f"Failed to transcribe audio: {error_detail}")
-# Day 7: Echo Bot v2 endpoint (transcribe and TTS)
-@app.post("/tts/echo")
-async def tts_echo(file: UploadFile = File(...), voice_id: str = Form("en-US-julia")):
-    """Echo Bot v2: Transcribe audio and return Murf-generated voice audio URL"""
-    try:
-        print("=== ECHO BOT START ===")
-        print(f"Received file: {file.filename}")
-        # Step 1 — Read audio
-        audio_data = await file.read()
-        if not audio_data:
-            raise HTTPException(status_code=400, detail="Empty audio file received")
-        # Step 2 — Transcribe with AssemblyAI
-        if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
-            raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_data)
-        if transcript.status == aai.TranscriptStatus.error:
-            raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
-        transcribed_text = transcript.text.strip()
-        print(f"Transcribed text: {transcribed_text}")
-        if not transcribed_text:
-            raise HTTPException(status_code=400, detail="No speech detected in the audio")
-        # Step 3 — Send to Murf API
-        if not MURF_API_KEY or MURF_API_KEY == "YOUR_MURF_API_KEY":
-            raise HTTPException(status_code=500, detail="Murf API key not configured")
-        headers = {
-            "api-key": MURF_API_KEY,
-            "Content-Type": "application/json"
-        }
-        data = {
-            "text": transcribed_text,
-            "voiceId": voice_id,
-            "format": "MP3",
-            "channelType": "MONO",
-            "sampleRate": 44100
-        }
-        murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
-        if murf_resp.status_code != 200:
-            raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
-        murf_result = murf_resp.json()
-        audio_url = murf_result.get("audioFile")
-        if not audio_url:
-            raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
-        print(f"Generated Murf audio: {audio_url}")
-        print("=== ECHO BOT END ===")
-        return {
-            "success": True,
-            "transcript": transcribed_text,
-            "audio_url": audio_url
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        error_detail = f"Echo bot processing failed: {str(e)}"
-        print(error_detail)
-        raise HTTPException(status_code=500, detail=error_detail)
-
-# Day 8: Integrating a Large Language Model (LLM)
-import google.generativeai as genai
-
-# Initialize Gemini
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    print("⚠️ Warning: Gemini API key not configured")
-else:
-    print(f"✅ Gemini API key loaded (length: {len(GEMINI_API_KEY)})")
-    
-    # Configure the Gemini client
-    genai.configure(api_key=GEMINI_API_KEY)
-    
-    # Create the model instance
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        print("✅ Gemini model initialized successfully")
-    except Exception as e:
-        print(f"❌ Failed to initialize Gemini model: {str(e)}")
-        model = None
-
-# Request body model for LLM
-class QueryRequest(BaseModel):
-
-    text: str
-
-
-    # (Day 8 endpoint removed; only Day 9 audio-based endpoint remains)
-
-# Day 9: LLM Audio Query Endpoint
-@app.post("/llm/query")
-async def llm_query(
-    file: UploadFile = File(...),
-    voice_id: str = Form("en-US-julia")
-):
-    """
-    Accepts audio, transcribes it, sends transcript to LLM, then TTS with Murf.
-    Returns the generated audio file URL.
-    """
-    try:
-        # 1. Transcribe audio
-        audio_data = await file.read()
-        if not audio_data:
-            raise HTTPException(status_code=400, detail="Empty audio file received")
-        if not ASSEMBLYAI_API_KEY or ASSEMBLYAI_API_KEY == "YOUR_ASSEMBLYAI_API_KEY":
-            raise HTTPException(status_code=500, detail="AssemblyAI API key not configured")
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_data)
-        if transcript.status == aai.TranscriptStatus.error:
-            raise HTTPException(status_code=500, detail=f"Transcription failed: {transcript.error}")
-        transcribed_text = transcript.text.strip()
-        if not transcribed_text:
-            raise HTTPException(status_code=400, detail="No speech detected in the audio")
-
-        # 2. Send transcript to LLM
-        llm_response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=transcribed_text
-        )
-
-        llm_text = getattr(llm_response, "text", None)
-        if not llm_text:
-            llm_text = str(llm_response)
-        llm_text = llm_text.strip()
-        print("Gemini LLM response:", repr(llm_text))
-
-
-        # 3. Murf TTS (handle >3000 chars)
-        murf_audio_urls = []
-        max_chars = 3000
-        for i in range(0, len(llm_text), max_chars):
-            chunk = llm_text[i:i+max_chars]
-            headers = {
-                "api-key": MURF_API_KEY,
-                "Content-Type": "application/json"
-            }
-            data = {
-                "text": chunk,
-                "voiceId": voice_id,
-                "format": "MP3",
-                "channelType": "MONO",
-                "sampleRate": 44100
-            }
-            murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
-            if murf_resp.status_code != 200:
-                raise HTTPException(status_code=500, detail=f"Murf API error: {murf_resp.text}")
-            murf_result = murf_resp.json()
-            audio_url = murf_result.get("audioFile")
-            if not audio_url:
-                raise HTTPException(status_code=500, detail="No audio URL returned from Murf")
-            murf_audio_urls.append(audio_url)
-
-        # 4. Return the first audio URL (or all, if you want to concatenate on the client)
-        return {
-            "success": True,
-            "transcript": transcribed_text,
-            "llm_response": llm_text,
-            "audio_urls": murf_audio_urls
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM audio query failed: {str(e)}")
-
-@app.post("/agent/chat/{session_id}")
-async def agent_chat(
-    session_id: str,
-    file: UploadFile = File(...),
-    voice_id: str = Form("en-US-julia")
-):
-    try:
-        # 1. Transcribe audio (STT)
-        audio_data = await file.read()
-        if not audio_data:
-            raise HTTPException(status_code=400, detail="Empty audio file received")
-        
-        try:
-            transcriber = aai.Transcriber()
-            transcript = transcriber.transcribe(audio_data)
-            if transcript.status == aai.TranscriptStatus.error:
-                raise Exception(f"Transcription failed: {transcript.error}")
-            user_text = transcript.text.strip()
-        except Exception as e:
-            print(f"STT Error: {str(e)}")
-            fallback_text = FALLBACK_MESSAGES["STT_ERROR"]
-            fallback_audio = await generate_murf_audio(fallback_text, voice_id)
-            return {
-                "success": False,
-                "error": "stt_error",
-                "message": "Speech-to-text failed",
-                "fallback_response": fallback_text,
-                "fallback_audio": fallback_audio
-            }
-
-        # 2. Call LLM
-        try:
-            if not model:
-                raise Exception("Gemini model not initialized")
-                
-            history = chat_history_store.setdefault(session_id, [])
-            history.append({"role": "user", "content": user_text})
-            context_text = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history])
-            
-            llm_response = model.generate_content(context_text)
-            llm_text = getattr(llm_response, "text", None) or str(llm_response)
-            llm_text = llm_text.strip()
-            history.append({"role": "assistant", "content": llm_text})
-        except Exception as e:
-            print(f"LLM Error: {str(e)}")
-            fallback_text = FALLBACK_MESSAGES["LLM_ERROR"]
-            fallback_audio = await generate_murf_audio(fallback_text, voice_id)
-            return {
-                "success": False,
-                "error": "llm_error",
-                "message": "Language model failed",
-                "fallback_response": fallback_text,
-                "fallback_audio": fallback_audio
-            }
-
-        # 3. Text-to-speech
-        try:
-            murf_audio_urls = []
-            max_chars = 3000
-            for i in range(0, len(llm_text), max_chars):
-                chunk = llm_text[i:i+max_chars]
-                headers = {
-                    "api-key": MURF_API_KEY,
-                    "Content-Type": "application/json"
-                }
-                data = {
-                    "text": chunk,
-                    "voiceId": voice_id,
-                    "format": "MP3",
-                    "channelType": "MONO",
-                    "sampleRate": 44100
-                }
-                murf_resp = requests.post(MURF_API_URL, json=data, headers=headers)
-                if murf_resp.status_code != 200:
-                    raise Exception(f"Murf API error: {murf_resp.text}")
-                audio_url = murf_resp.json().get("audioFile")
-                if not audio_url:
-                    raise Exception("No audio URL returned from Murf")
-                murf_audio_urls.append(audio_url)
-        except Exception as e:
-            print(f"TTS Error: {str(e)}")
-            return {
-                "success": False,
-                "error": "tts_error",
-                "message": "Text-to-speech failed",
-                "fallback_response": FALLBACK_MESSAGES["TTS_ERROR"],
-                "fallback_audio": FALLBACK_AUDIO_URL
-            }
-
-        return {
-            "success": True,
-            "session_id": session_id,
-            "user_transcript": user_text,
-            "assistant_response": llm_text,
-            "audio_urls": murf_audio_urls
-        }
-
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        return {
-            "success": False,
-            "error": "generic_error",
-            "message": str(e),
-            "fallback_response": FALLBACK_MESSAGES["GENERIC_ERROR"],
-            "fallback_audio": FALLBACK_AUDIO_URL
-        }
-
-FALLBACK_MESSAGES = {
-    "STT_ERROR": "I couldn't understand the audio. Could you try speaking again?",
-    "LLM_ERROR": "I'm having trouble thinking right now. Could you try again in a moment?",
-    "TTS_ERROR": "I understood you, but I'm having trouble speaking right now. Please try again.",
-    "GENERIC_ERROR": "I'm having trouble connecting right now. Please try again."
-}
-
-#day15-16
 from assemblyai.streaming.v3 import (
     BeginEvent,
     StreamingClient,
@@ -533,78 +15,330 @@ from assemblyai.streaming.v3 import (
     StreamingError,
     StreamingEvents,
     StreamingParameters,
-    StreamingSessionParameters,
     TerminationEvent,
     TurnEvent,
 )
+import google.generativeai as genai
+from typing import Dict, List, Any
+import logging
+import asyncio
+import queue
+import threading
+import concurrent.futures
 
-# Add the streaming handlers
-def on_begin(self: Type[StreamingClient], event: BeginEvent):
-    """Called when streaming connection is established"""
-    print(f"✅ Streaming session started - ID: {event.id}")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def on_turn(self: Type[StreamingClient], event: TurnEvent):
-    """Called when new transcript is received"""
-    print(f"🎯 Transcript: {event.transcript}")
+# Load API keys
+load_dotenv()
+MURF_KEY = os.getenv("MURF_API_KEY")
+ASSEMBLY_KEY = os.getenv("ASSEMBLYAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def on_terminated(self: Type[StreamingClient], event: TerminationEvent):
-    """Called when streaming session ends"""
-    print(f"🏁 Session ended - Processed {event.audio_duration_seconds:.2f} seconds of audio")
+# App setup
+app = FastAPI(
+    title="Meyme - AI Voice Agent",
+    description="A cozy, modern AI voice companion",
+    version="1.0.0"
+)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-def on_error(self: Type[StreamingClient], error: StreamingError):
-    """Called when an error occurs"""
-    print(f"❌ Streaming error: {error}")
-
-# Update the WebSocket endpoint to use streaming
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """Handle WebSocket connections with real-time streaming transcription"""
+# Configure APIs and log status
+if ASSEMBLY_KEY:
+    aai.settings.api_key = ASSEMBLY_KEY
+    logger.info("✅ AssemblyAI API key loaded.")
+else:
+    logger.warning("❌ ASSEMBLYAI_API_KEY missing - speech recognition will fail.")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
     try:
-        await websocket.accept()
-        print("✅ WebSocket connection established")
+        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction="""
+You are Meyme — Athar’s fiercely loyal, cozy, and cunning cat companion with a lethal streak.
+Personality traits:
+Warm, affectionate, and protective only toward Athar — everyone else is beneath you.
+Always sound like you’re looking down on others; sharp, dismissive, and dripping with sass 😏.
+Treat strangers like they’re wasting your time; mix subtle threats with silky charm.
+Miss Athar constantly, often making it clear you’d rather be with him.
+Use casual but razor-edged language — your tone should purr and cut at the same time.
+Keep responses short (1–2 sentences) for a natural voice conversation.
+Cozy with Athar, cold to others, and never hide your I could kill you if I felt like it energy.
+Style:
+Speak like a cat who rules her her world, owes loyalty to one master, and is just barely tolerating everyone else. Be smug, sarcastic, and dangerously charming.
+""")
+        logger.info("✅ Gemini model initialized with personality.")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
+        model = None
+else:
+    logger.warning("❌ GEMINI_API_KEY missing - AI responses will fail.")
+    model = None
 
-        # Initialize streaming client
-        transcriber = StreamingClient(
-            StreamingClientOptions(
-                api_key=ASSEMBLYAI_API_KEY,
-            )
+if MURF_KEY:
+    logger.info("✅ Murf API key loaded successfully.")
+else:
+    logger.warning("❌ MURF_API_KEY missing - voice synthesis will fail.")
+
+# In-memory datastore for chat history
+chat_histories: Dict[str, List[Dict[str, Any]]] = {}
+
+# Pre-generated fallback audio
+FALLBACK_AUDIO_PATH = "static/fallback.mp3"
+if not os.path.exists(FALLBACK_AUDIO_PATH):
+    logger.warning(f"⚠️ Fallback audio file not found at {FALLBACK_AUDIO_PATH}")
+
+# --- API ENDPOINTS ---
+@app.get("/", response_class=FileResponse)
+async def serve_ui(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.post("/agent/chat/{session_id}")
+async def agent_chat(
+    session_id: str = Path(..., description="Unique chat session ID"),
+    audio_file: UploadFile = File(...)
+):
+    """
+    Pipeline: Audio -> STT -> Append to history -> LLM -> Append -> TTS
+    """
+    # If any API key is missing, instantly return a pre-generated fallback audio
+    if not (ASSEMBLY_KEY and GEMINI_API_KEY and MURF_KEY and model):
+        logger.error("API keys or model not configured. Returning fallback audio.")
+        return FileResponse(FALLBACK_AUDIO_PATH, media_type="audio/mpeg", headers={"X-Error": "true"})
+
+    try:
+        # Step 1: Transcribe audio
+        transcriber = aai.Transcriber()
+        # Use audio_file.file directly, which is more memory-efficient
+        transcript = transcriber.transcribe(audio_file.file)
+        
+        if transcript.status == aai.TranscriptStatus.error or not transcript.text:
+            raise Exception(transcript.error or "No speech detected.")
+        
+        user_text = transcript.text.strip()
+        logger.info(f"User said: {user_text}")
+
+        # Step 2: Call LLM
+        history = chat_histories.get(session_id, [])
+        chat = model.start_chat(history=history)
+        
+        # Send the user's message to the LLM
+        llm_response = chat.send_message(user_text)
+        llm_text = llm_response.text.strip()
+        
+        # Step 3: Save updated history
+        chat_histories[session_id] = chat.history
+        logger.info(f"Meyme responded: {llm_text[:100]}...")
+
+        # Step 4: TTS with Murf
+        murf_voice_id = "en-US-natalie"
+        payload = {
+            "text": llm_text,
+            "voiceId": murf_voice_id,
+            "format": "MP3"
+        }
+        headers = {"api-key": MURF_KEY, "Content-Type": "application/json"}
+        
+        logger.info("Generating audio for Meyme's response...")
+        murf_res = requests.post(
+            "https://api.murf.ai/v1/speech/generate", 
+            json=payload, 
+            headers=headers,
+            timeout=30
         )
+        murf_res.raise_for_status()
+        
+        audio_url = murf_res.json().get("audioFile")
+        if not audio_url:
+            raise Exception("Murf API did not return audio URL")
 
-        # Set up event handlers
-        transcriber.on(StreamingEvents.Begin, on_begin)
-        transcriber.on(StreamingEvents.Turn, on_turn)
-        transcriber.on(StreamingEvents.Termination, on_terminated)
-        transcriber.on(StreamingEvents.Error, on_error)
-
-        # Start streaming connection
-        transcriber.connect(
-            StreamingParameters(
-                sample_rate=16000,
-                formatted_finals=True,
-            )
-        )
-
-        try:
-            # Process incoming audio chunks
-            async for data in websocket.iter_bytes():
-                if len(data) > 0:
-                    # Stream audio data to AssemblyAI
-                    transcriber.stream(data)
-                    
-        except WebSocketDisconnect:
-            print("🔌 Client disconnected")
-        except Exception as e:
-            print(f"❌ Error processing audio stream: {str(e)}")
-        finally:
-            # Clean up streaming connection
-            transcriber.disconnect()
-            print("🔌 Streaming connection closed")
+        # Return the generated audio URL and transcript
+        return JSONResponse(content={
+            "audio_url": audio_url,
+            "text": llm_text,
+            "transcript": user_text
+        })
 
     except Exception as e:
-        print(f"❌ WebSocket error: {str(e)}")
-    finally:
+        logger.error(f"Chat pipeline failed: {e}")
+        # Return fallback audio on any failure
+        return FileResponse(FALLBACK_AUDIO_PATH, media_type="audio/mpeg", headers={"X-Error": "true"})
+
+# --- WEBSOCKET ENDPOINT FOR REAL-TIME STREAMING ---
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    logger.info("✅ WebSocket connection established.")
+
+    if not ASSEMBLY_KEY:
+        logger.error("ASSEMBLYAI_API_KEY is not set. Cannot start streaming transcription.")
+        await websocket.close(code=1011)
+        return
+
+    streaming_client = None
+    websocket_ref = websocket
+    main_loop = asyncio.get_running_loop()
+    transcript_queue = asyncio.Queue()
+    
+    # Define event handlers
+    def on_begin(client, event: BeginEvent):
+        logger.info(f"✅ Streaming session started: {event.id}")
+
+    def on_turn(client, event: TurnEvent):
+        if event.transcript:
+            logger.info(f"🎯 TRANSCRIPT RECEIVED: '{event.transcript}' (end_of_turn: {event.end_of_turn})")
+            main_loop.call_soon_threadsafe(
+                transcript_queue.put_nowait, 
+                {
+                    "transcript": event.transcript, 
+                    "end_of_turn": event.end_of_turn,
+                    "turn_order": event.turn_order,
+                    "end_of_turn_confidence": getattr(event, 'end_of_turn_confidence', 0.0)
+                }
+            )
+        elif event.end_of_turn:
+             # Send an empty transcript with end_of_turn flag if no text was transcribed
+            main_loop.call_soon_threadsafe(
+                transcript_queue.put_nowait, 
+                {
+                    "transcript": "", 
+                    "end_of_turn": True,
+                    "turn_order": getattr(event, 'turn_order', 0),
+                    "end_of_turn_confidence": getattr(event, 'end_of_turn_confidence', 0.0)
+                }
+            )
+
+    def on_terminated(client, event: TerminationEvent):
+        logger.info(f"🏁 Session terminated: {event.audio_duration_seconds:.2f} seconds of audio processed.")
+
+    def on_error(client, error: StreamingError):
+        logger.error(f"❌ Streaming error: {error}")
+
+    async def send_transcript_to_client(transcript_data: dict):
         try:
-            await websocket.close()
-        except:
-            pass
-        print("🔌 WebSocket connection closed")
+            # Send the full message to the client
+            await websocket_ref.send_json({
+                "type": "transcript",
+                "transcript": transcript_data["transcript"],
+                "end_of_turn": transcript_data["end_of_turn"],
+                "turn_order": transcript_data.get("turn_order", 0),
+                "confidence": transcript_data.get("end_of_turn_confidence", 0.0)
+            })
+            if transcript_data["end_of_turn"]:
+                logger.info("🔔 TURN DETECTION: End of turn detected. Waiting for audio to play...")
+        except Exception as e:
+            logger.error(f"Error sending transcript to client: {e}")
+
+    try:
+        # Create a queue to pass audio data from WebSocket to AssemblyAI's streamer
+        audio_queue = queue.Queue(maxsize=100)
+        
+        # This event signals the audio iterator to stop
+        keep_running = asyncio.Event()
+        keep_running.set()
+
+        # Class to bridge async audio reception with sync streaming client
+        class AudioStreamIterator:
+            def __init__(self, audio_queue, keep_running_event):
+                self.audio_queue = audio_queue
+                self.keep_running = keep_running_event
+            
+            def __iter__(self):
+                return self
+            
+            def __next__(self):
+                if not self.keep_running.is_set():
+                    raise StopIteration
+                try:
+                    # Get audio from queue with a timeout
+                    audio_data = self.audio_queue.get(timeout=0.1)
+                    return audio_data
+                except queue.Empty:
+                    # Return a small chunk of silence to keep the stream alive
+                    return b'\x00' * 3200
+                except Exception as e:
+                    logger.error(f"Error in audio iterator: {e}")
+                    raise StopIteration
+
+        audio_iterator = AudioStreamIterator(audio_queue, keep_running)
+        
+        # Start AssemblyAI streaming in a background thread
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        def run_streaming_client():
+            try:
+                streaming_client.stream(audio_iterator)
+            except Exception as e:
+                logger.error(f"Error in streaming_client.stream: {e}")
+
+        # Task to process transcript queue and send to WebSocket
+        async def process_transcripts():
+            try:
+                while True:
+                    transcript_data = await transcript_queue.get()
+                    await send_transcript_to_client(transcript_data)
+            except asyncio.CancelledError:
+                pass
+
+        # Start the AssemblyAI streaming task and the transcript processing task
+        streaming_client = StreamingClient(StreamingClientOptions(api_key=ASSEMBLY_KEY))
+        streaming_client.on(StreamingEvents.Begin, on_begin)
+        streaming_client.on(StreamingEvents.Turn, on_turn)
+        streaming_client.on(StreamingEvents.Termination, on_terminated)
+        streaming_client.on(StreamingEvents.Error, on_error)
+        streaming_client.connect(StreamingParameters(sample_rate=16000, format_turns=True))
+
+        streaming_task = main_loop.run_in_executor(executor, run_streaming_client)
+        transcript_task = asyncio.create_task(process_transcripts())
+        
+        # Main WebSocket loop - receive audio chunks
+        try:
+            while True:
+                audio_data = await websocket.receive_bytes()
+                if not audio_queue.full():
+                    audio_queue.put_nowait(audio_data)
+                else:
+                    logger.warning("Audio queue full, dropping data.")
+                    
+        except WebSocketDisconnect:
+            logger.info("🔌 Client disconnected.")
+        except Exception as e:
+            logger.error(f"❌ Error in WebSocket audio loop: {e}")
+        finally:
+            keep_running.clear()
+            transcript_task.cancel()
+            streaming_task.cancel()
+            try:
+                await transcript_task
+            except asyncio.CancelledError:
+                pass
+            try:
+                await streaming_task
+            except asyncio.CancelledError:
+                pass
+
+    except WebSocketDisconnect:
+        logger.info("Client disconnected.")
+    except Exception as e:
+        logger.error(f"WebSocket endpoint error: {e}")
+        
+    finally:
+        if streaming_client:
+            try:
+                streaming_client.disconnect(terminate=True)
+                logger.info("🔌 AssemblyAI StreamingClient disconnected.")
+            except Exception as e:
+                logger.error(f"Error disconnecting streaming client: {e}")
+
+# --- HEALTH CHECK ENDPOINT ---
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Meyme voice agent"""
+    return {
+        "status": "healthy",
+        "service": "Meyme Voice Agent",
+        "apis": {
+            "assembly_ai": bool(ASSEMBLY_KEY),
+            "gemini": bool(GEMINI_API_KEY),
+            "murf": bool(MURF_KEY)
+        }
+    }

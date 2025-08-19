@@ -1,49 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Agent Challenge</title>
-    <link rel="stylesheet" href="/static/style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title> AI Voice Agent CHALLENGE</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="main-layout">
-            
-            <!-- Right Side - Echo Bot Section -->
-            <!-- Right Side - Chat Agent Section -->
-<div class="chat-section">
-  <div class="content">
-    <h1 class="title">Voice Agent Chat</h1>
-    <p class="description">
-      Converse by voice — each turn is shown in chat below. AI responds using context memory!
-    </p>
 
-    <!-- Chat history appears here -->
-    <div id="chatHistory" class="chat-history"></div>
-    
-    <!-- Chat controls -->
-    <div class="chat-controls">
-      <button id="startRecording" class="record-button start" onclick="startRecording()">
-        🎙️ Speak
+<div class="container">
+    <img src="https://i.pinimg.com/736x/70/aa/5b/70aa5b9544ef08fbac01f4d50898d2c5.jpg" alt="Meyme Profile Picture" class="meyme-pfp">
+    <h1 class="meyme-title">AI Voice Agent Challenge</h1>
+    <p class="meyme-subtitle">Converse by voice — each turn is shown in chat below. AI responds using context memory!
+
+</p>
+
+    <div class="voice-button-container">
+      <button class="voice-button" id="voiceButton" aria-label="Start voice conversation">
+        <i class="fas fa-microphone" id="micIcon"></i>
       </button>
-      <button id="stopRecording" class="record-button stop" onclick="stopRecording()" disabled>
-        ⏹️ Stop
-      </button>
-      <!-- Optionally add keyboard input for manual testing -->
-      <!--
-      <input type="text" id="textMessage" placeholder="Type a message..." />
-      <button onclick="sendTextMessage()">Send</button>
-      -->
     </div>
 
-    <!-- Audio player for agent responses -->
-    <audio id="playbackAudio" controls style="display:none"></audio>
-  </div>
+    <div class="status-message show" id="statusMessage">
+      Click here to start talking 
+    </div>
 </div>
 
-        </div>
-    </div>
-    <script src="/static/script.js?v=5"></script>
+<script src="/static/script.js"></script>
 </body>
 </html>
