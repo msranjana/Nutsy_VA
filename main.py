@@ -17,7 +17,7 @@ from pydantic import BaseModel
 import asyncio
 
 # Global, in-memory chat history (prototype only)
-from typing import Dict, List
+from typing import Dict, List, Type
 chat_history_store: Dict[str, List[Dict[str, str]]] = {}
 
 
@@ -526,36 +526,85 @@ FALLBACK_MESSAGES = {
 }
 
 #day15-16
+from assemblyai.streaming.v3 import (
+    BeginEvent,
+    StreamingClient,
+    StreamingClientOptions,
+    StreamingError,
+    StreamingEvents,
+    StreamingParameters,
+    StreamingSessionParameters,
+    TerminationEvent,
+    TurnEvent,
+)
+
+# Add the streaming handlers
+def on_begin(self: Type[StreamingClient], event: BeginEvent):
+    """Called when streaming connection is established"""
+    print(f"✅ Streaming session started - ID: {event.id}")
+
+def on_turn(self: Type[StreamingClient], event: TurnEvent):
+    """Called when new transcript is received"""
+    print(f"🎯 Transcript: {event.transcript}")
+
+def on_terminated(self: Type[StreamingClient], event: TerminationEvent):
+    """Called when streaming session ends"""
+    print(f"🏁 Session ended - Processed {event.audio_duration_seconds:.2f} seconds of audio")
+
+def on_error(self: Type[StreamingClient], error: StreamingError):
+    """Called when an error occurs"""
+    print(f"❌ Streaming error: {error}")
+
+# Update the WebSocket endpoint to use streaming
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Handle WebSocket connections for real-time audio streaming"""
+    """Handle WebSocket connections with real-time streaming transcription"""
     try:
         await websocket.accept()
         print("✅ WebSocket connection established")
-        
-        # Create an audio buffer
-        audio_buffer = []
-        
-        # Process incoming audio chunks
-        async for data in websocket.iter_bytes():
-            print(f"📥 Received audio chunk: {len(data)} bytes")
-            audio_buffer.append(data)
-            
-            # Optional: Process audio when buffer reaches certain size
-            if len(audio_buffer) >= 10:  # Adjust based on your needs
-                try:
-                    # Process accumulated audio data
-                    audio_data = b''.join(audio_buffer)
-                    # TODO: Add your audio processing logic here
-                    audio_buffer = []  # Clear buffer after processing
-                except Exception as e:
-                    print(f"❌ Error processing audio: {str(e)}")
+
+        # Initialize streaming client
+        transcriber = StreamingClient(
+            StreamingClientOptions(
+                api_key=ASSEMBLYAI_API_KEY,
+            )
+        )
+
+        # Set up event handlers
+        transcriber.on(StreamingEvents.Begin, on_begin)
+        transcriber.on(StreamingEvents.Turn, on_turn)
+        transcriber.on(StreamingEvents.Termination, on_terminated)
+        transcriber.on(StreamingEvents.Error, on_error)
+
+        # Start streaming connection
+        transcriber.connect(
+            StreamingParameters(
+                sample_rate=16000,
+                formatted_finals=True,
+            )
+        )
+
+        try:
+            # Process incoming audio chunks
+            async for data in websocket.iter_bytes():
+                if len(data) > 0:
+                    # Stream audio data to AssemblyAI
+                    transcriber.stream(data)
                     
+        except WebSocketDisconnect:
+            print("🔌 Client disconnected")
+        except Exception as e:
+            print(f"❌ Error processing audio stream: {str(e)}")
+        finally:
+            # Clean up streaming connection
+            transcriber.disconnect()
+            print("🔌 Streaming connection closed")
+
     except Exception as e:
         print(f"❌ WebSocket error: {str(e)}")
     finally:
         try:
             await websocket.close()
-            print("🔌 WebSocket connection closed")
         except:
             pass
+        print("🔌 WebSocket connection closed")
