@@ -38,8 +38,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # App setup
 app = FastAPI(
-    title="Meyme - AI Voice Agent",
-    description="A cozy, modern AI voice companion",
+    title=" AI Voice Agent",
+    description="A  modern AI voice agent",
     version="1.0.0"
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -86,7 +86,7 @@ chat_histories: Dict[str, List[Dict[str, Any]]] = {}
 # Pre-generated fallback audio
 FALLBACK_AUDIO_PATH = "static/fallback.mp3"
 if not os.path.exists(FALLBACK_AUDIO_PATH):
-    logger.warning(f"⚠️ Fallback audio file not found at {FALLBACK_AUDIO_PATH}")
+    logger.warning(f" Fallback audio file not found at {FALLBACK_AUDIO_PATH}")
 
 # --- API ENDPOINTS ---
 @app.get("/", response_class=FileResponse)
@@ -225,7 +225,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "confidence": transcript_data.get("end_of_turn_confidence", 0.0)
             })
             if transcript_data["end_of_turn"]:
-                logger.info("🔔 TURN DETECTION: End of turn detected. Waiting for audio to play...")
+                logger.info("TURN DETECTION: End of turn detected. Waiting for audio to play...")
         except Exception as e:
             logger.error(f"Error sending transcript to client: {e}")
 
@@ -300,7 +300,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.warning("Audio queue full, dropping data.")
                     
         except WebSocketDisconnect:
-            logger.info("🔌 Client disconnected.")
+            logger.info(" Client disconnected.")
         except Exception as e:
             logger.error(f"❌ Error in WebSocket audio loop: {e}")
         finally:
@@ -325,7 +325,7 @@ async def websocket_endpoint(websocket: WebSocket):
         if streaming_client:
             try:
                 streaming_client.disconnect(terminate=True)
-                logger.info("🔌 AssemblyAI StreamingClient disconnected.")
+                logger.info(" AssemblyAI StreamingClient disconnected.")
             except Exception as e:
                 logger.error(f"Error disconnecting streaming client: {e}")
 

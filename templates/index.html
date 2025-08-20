@@ -15,18 +15,17 @@
                 <p class="subtitle">Converse by voice — each turn is shown in chat below. AI responds using context memory!</p>
             </header>
 
-            <div class="chat-history" id="chatHistory">
-                <!-- Chat messages will appear here -->
+            <div id="statusMessage" class="status-message">
+                Press the mic button to start talking
             </div>
+
+            <div class="chat-history" id="chatHistory">
+                </div>
 
             <div class="control-panel">
                 <button id="voiceButton" class="speak-button">
                     <i class="fas fa-microphone" id="micIcon"></i>
                     Speak
-                </button>
-                <button id="stopButton" class="stop-button" disabled>
-                    <i class="fas fa-stop"></i>
-                    Stop
                 </button>
             </div>
         </div>
