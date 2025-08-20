@@ -307,9 +307,27 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 while True:
                     transcript_data = await transcript_queue.get()
-                    await send_transcript_to_client(transcript_data)
+                    # Forward transcription immediately (optional)
+                    await websocket_ref.send_json({
+                        "type": "transcript",
+                        "transcript": transcript_data["transcript"],
+                        "end_of_turn": transcript_data.get("end_of_turn", False),
+                        "confidence": transcript_data.get("confidence", 0.0)
+                    })
+
+                    # If end_of_turn, generate and emit LLM response
+                    if transcript_data.get("end_of_turn", False):
+                        user_text = transcript_data["transcript"]
+                        llm_text = await stream_llm_response(user_text, session_id)
+                        await websocket_ref.send_json({
+                            "type": "llm_response",
+                            "text": llm_text,
+                            "transcript": user_text
+                        })
             except asyncio.CancelledError:
                 pass
+            except Exception as e:
+                logger.error(f"Error in process_transcripts: {e}")
 
         # Update the streaming client initialization with the new handlers
         streaming_client = StreamingClient(StreamingClientOptions(api_key=ASSEMBLY_KEY))
