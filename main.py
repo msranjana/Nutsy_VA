@@ -25,6 +25,7 @@ import asyncio
 import queue
 import threading
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -164,14 +165,90 @@ async def agent_chat(
         # Return fallback audio on any failure
         return FileResponse(FALLBACK_AUDIO_PATH, media_type="audio/mpeg", headers={"X-Error": "true"})
 
+# Add the streaming LLM function
+async def stream_llm_response(user_text: str, session_id: str) -> str:
+    """
+    Stream LLM response from Gemini and accumulate the full response.
+    Prints streaming chunks to console and returns the complete response.
+    """
+    try:
+        # Initialize history for this session
+        history = chat_histories.get(session_id, [])
+        model = genai.GenerativeModel(
+            "gemini-1.5-flash",
+            system_instruction="""
+            You are an AI voice assistant. Keep responses natural and concise.
+            Focus on being helpful while maintaining a conversational tone.
+            Responses should be 1-2 sentences for voice interaction.
+            """
+        )
+        
+        # Start chat with existing history
+        chat = model.start_chat(history=history)
+        logger.info(f"Processing user input: '{user_text}'")
+        
+        # Create a new event loop for the thread
+        accumulated_response = ""
+        
+        def process_stream():
+            nonlocal accumulated_response
+            response_stream = chat.send_message(user_text, stream=True)
+            
+            for chunk in response_stream:
+                if chunk.text:
+                    print(chunk.text, end="", flush=True)
+                    accumulated_response += chunk.text
+        
+        # Run the streaming in a thread pool to avoid blocking
+        with ThreadPoolExecutor() as executor:
+            await asyncio.get_event_loop().run_in_executor(executor, process_stream)
+        
+        # Update chat history with the complete conversation
+        chat_histories[session_id] = chat.history
+        
+        return accumulated_response.strip()
+        
+    except Exception as e:
+        logger.error(f"Error in streaming LLM response: {e}")
+        return f"Sorry, I'm having trouble processing that right now. {str(e)}"
+
+# Update the handler definitions to include the event loop and queue
+def create_handlers(main_loop, transcript_queue):
+    def on_begin(client, event: BeginEvent):
+        """Handler for session begin event"""
+        logger.info(f"Streaming session started: {event.id}")
+
+    def on_turn(client, event: TurnEvent):
+        """Handler for turn event with transcript"""
+        if event.transcript:
+            logger.info(f"Transcript received: '{event.transcript}' (end_of_turn: {event.end_of_turn})")
+            main_loop.call_soon_threadsafe(
+                transcript_queue.put_nowait,
+                {
+                    "transcript": event.transcript,
+                    "end_of_turn": event.end_of_turn,
+                    "confidence": getattr(event, 'end_of_turn_confidence', 0.0)
+                }
+            )
+
+    def on_terminated(client, event: TerminationEvent):
+        """Handler for session termination event"""
+        logger.info(f"Session terminated: {event.audio_duration_seconds:.2f} seconds of audio processed")
+
+    def on_error(client, error: StreamingError):
+        """Handler for streaming errors"""
+        logger.error(f"Streaming error occurred: {error}")
+        
+    return on_begin, on_turn, on_terminated, on_error
+
 # --- WEBSOCKET ENDPOINT FOR REAL-TIME STREAMING ---
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    logger.info("✅ WebSocket connection established.")
+    logger.info("WebSocket connection established")
 
     if not ASSEMBLY_KEY:
-        logger.error("ASSEMBLYAI_API_KEY is not set. Cannot start streaming transcription.")
+        logger.error("ASSEMBLYAI_API_KEY is not set")
         await websocket.close(code=1011)
         return
 
@@ -179,55 +256,10 @@ async def websocket_endpoint(websocket: WebSocket):
     websocket_ref = websocket
     main_loop = asyncio.get_running_loop()
     transcript_queue = asyncio.Queue()
-    
-    # Define event handlers
-    def on_begin(client, event: BeginEvent):
-        logger.info(f"✅ Streaming session started: {event.id}")
+    session_id = f"ws_session_{id(websocket)}"
 
-    def on_turn(client, event: TurnEvent):
-        if event.transcript:
-            logger.info(f"🎯 TRANSCRIPT RECEIVED: '{event.transcript}' (end_of_turn: {event.end_of_turn})")
-            main_loop.call_soon_threadsafe(
-                transcript_queue.put_nowait, 
-                {
-                    "transcript": event.transcript, 
-                    "end_of_turn": event.end_of_turn,
-                    "turn_order": event.turn_order,
-                    "end_of_turn_confidence": getattr(event, 'end_of_turn_confidence', 0.0)
-                }
-            )
-        elif event.end_of_turn:
-             # Send an empty transcript with end_of_turn flag if no text was transcribed
-            main_loop.call_soon_threadsafe(
-                transcript_queue.put_nowait, 
-                {
-                    "transcript": "", 
-                    "end_of_turn": True,
-                    "turn_order": getattr(event, 'turn_order', 0),
-                    "end_of_turn_confidence": getattr(event, 'end_of_turn_confidence', 0.0)
-                }
-            )
-
-    def on_terminated(client, event: TerminationEvent):
-        logger.info(f"🏁 Session terminated: {event.audio_duration_seconds:.2f} seconds of audio processed.")
-
-    def on_error(client, error: StreamingError):
-        logger.error(f"❌ Streaming error: {error}")
-
-    async def send_transcript_to_client(transcript_data: dict):
-        try:
-            # Send the full message to the client
-            await websocket_ref.send_json({
-                "type": "transcript",
-                "transcript": transcript_data["transcript"],
-                "end_of_turn": transcript_data["end_of_turn"],
-                "turn_order": transcript_data.get("turn_order", 0),
-                "confidence": transcript_data.get("end_of_turn_confidence", 0.0)
-            })
-            if transcript_data["end_of_turn"]:
-                logger.info("TURN DETECTION: End of turn detected. Waiting for audio to play...")
-        except Exception as e:
-            logger.error(f"Error sending transcript to client: {e}")
+    # Create handlers with the current event loop and queue
+    on_begin, on_turn, on_terminated, on_error = create_handlers(main_loop, transcript_queue)
 
     try:
         # Create a queue to pass audio data from WebSocket to AssemblyAI's streamer
@@ -279,7 +311,7 @@ async def websocket_endpoint(websocket: WebSocket):
             except asyncio.CancelledError:
                 pass
 
-        # Start the AssemblyAI streaming task and the transcript processing task
+        # Update the streaming client initialization with the new handlers
         streaming_client = StreamingClient(StreamingClientOptions(api_key=ASSEMBLY_KEY))
         streaming_client.on(StreamingEvents.Begin, on_begin)
         streaming_client.on(StreamingEvents.Turn, on_turn)
