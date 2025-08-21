@@ -102,19 +102,23 @@ if not os.path.exists(FALLBACK_AUDIO_PATH):
 
 
 # --- Murf WebSocket TTS function ---
-async def murf_websocket_tts(text_chunks: list, context_id: str = "day20_context") -> None:
+STATIC_MURF_CONTEXT = "voice_agent_static_context"  # Static context ID for all requests
+
+async def murf_websocket_tts(text_chunks: list, context_id: str = STATIC_MURF_CONTEXT) -> None:
     """
     Send streaming text chunks to Murf WebSocket and print base64 audio responses.
+    Uses a static context_id to avoid context limit exceeded errors.
     """
     if not MURF_KEY:
-        logger.error("❌ MURF_API_KEY not set, cannot connect to Murf WebSocket")
+        logger.error("MURF_API_KEY not set, cannot connect to Murf WebSocket")
         return
     
     try:
         ws_url = f"wss://api.murf.ai/v1/speech/stream-input?api-key={MURF_KEY}&sample_rate=44100&channel_type=MONO&format=WAV"
-        logger.info(f"🎵 Connecting to Murf WebSocket for TTS...")
+        logger.info("Connecting to Murf WebSocket for TTS...")
         
         async with websockets.connect(ws_url) as ws:
+            # Use static context ID for voice config
             voice_config_msg = {
                 "voice_config": {
                     "voiceId": "en-US-amara",
@@ -123,14 +127,14 @@ async def murf_websocket_tts(text_chunks: list, context_id: str = "day20_context
                     "pitch": 0,
                     "variation": 1
                 },
-                "context_id": context_id
+                "context_id": STATIC_MURF_CONTEXT  # Use static context
             }
             await ws.send(json.dumps(voice_config_msg))
-            
-            full_text = "".join(text_chunks)
+
+            # Use static context ID for text message
             text_msg = {
-                "text": full_text,
-                "context_id": context_id,
+                "text": "".join(text_chunks),
+                "context_id": STATIC_MURF_CONTEXT,  # Use static context
                 "end": True
             }
             await ws.send(json.dumps(text_msg))
@@ -190,6 +194,14 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str) -> 
             system_instruction=MEYME_SYSTEM_PROMPT
         )
         chat = model.start_chat(history=history)
+        
+        # Print request info
+        print("\n" + "=" * 60)
+        print(f"🔄 LLM REQUEST:")
+        print(f"Session: {session_id}")
+        print(f"Input: '{user_text}'")
+        print("=" * 60)
+        
         accumulated_response = ""
         text_chunks = []
         response_stream = chat.send_message(user_text, stream=True)
@@ -200,11 +212,16 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str) -> 
                 accumulated_response += chunk.text
                 text_chunks.append(chunk.text)
         
-        print()
+        # Print response info
+        print("\n" + "=" * 60)
+        print(f"✅ LLM RESPONSE:")
+        print(f"Full response: '{accumulated_response.strip()}'")
+        print(f"API URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash")
+        print("=" * 60)
         
         if text_chunks and MURF_KEY:
-            context_id = f"session_{session_id}_{hash(user_text) % 10000}"
-            await murf_websocket_tts(text_chunks, context_id)
+            # Use static context ID instead of dynamic one
+            await murf_websocket_tts(text_chunks, STATIC_MURF_CONTEXT)
         
         chat_histories[session_id] = chat.history
         
