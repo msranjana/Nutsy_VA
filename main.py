@@ -104,10 +104,10 @@ if not os.path.exists(FALLBACK_AUDIO_PATH):
 # --- Murf WebSocket TTS function ---
 STATIC_MURF_CONTEXT = "voice_agent_static_context"  # Static context ID for all requests
 
-async def murf_websocket_tts(text_chunks: list, context_id: str = STATIC_MURF_CONTEXT) -> None:
+# --- Murf WebSocket TTS function (updated to stream to client) ---
+async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, context_id: str = STATIC_MURF_CONTEXT) -> None:
     """
-    Send streaming text chunks to Murf WebSocket and print base64 audio responses.
-    Uses a static context_id to avoid context limit exceeded errors.
+    Send streaming text chunks to Murf WebSocket and forward base64 audio chunks over FastAPI websocket.
     """
     if not MURF_KEY:
         logger.error("MURF_API_KEY not set, cannot connect to Murf WebSocket")
@@ -118,7 +118,7 @@ async def murf_websocket_tts(text_chunks: list, context_id: str = STATIC_MURF_CO
         logger.info("Connecting to Murf WebSocket for TTS...")
         
         async with websockets.connect(ws_url) as ws:
-            # Use static context ID for voice config
+            # voice config
             voice_config_msg = {
                 "voice_config": {
                     "voiceId": "en-US-amara",
@@ -127,66 +127,57 @@ async def murf_websocket_tts(text_chunks: list, context_id: str = STATIC_MURF_CO
                     "pitch": 0,
                     "variation": 1
                 },
-                "context_id": STATIC_MURF_CONTEXT  # Use static context
+                "context_id": STATIC_MURF_CONTEXT
             }
             await ws.send(json.dumps(voice_config_msg))
 
-            # Use static context ID for text message
+            # text chunk message
             text_msg = {
                 "text": "".join(text_chunks),
-                "context_id": STATIC_MURF_CONTEXT,  # Use static context
+                "context_id": STATIC_MURF_CONTEXT,
                 "end": True
             }
             await ws.send(json.dumps(text_msg))
             
             audio_chunks_received = 0
-            total_base64_chars = 0
-            
+
             while True:
                 try:
                     response = await ws.recv()
                     data = json.loads(response)
-                    
+
                     if "audio" in data:
                         audio_chunks_received += 1
                         base64_audio = data["audio"]
-                        total_base64_chars += len(base64_audio)
-                        
-                        print(f"\n📦 MURF BASE64 AUDIO CHUNK #{audio_chunks_received}:")
-                        print(f"   Size: {len(base64_audio):,} base64 characters")
-                        print(f"   Preview: {base64_audio[:80]}{'...' if len(base64_audio) > 80 else ''}")
-                        print("   " + "-" * 75)
-                        
-                        print(f"\n🎵 FULL BASE64 AUDIO CHUNK #{audio_chunks_received}:")
-                        print(base64_audio)
-                        print("\n" + "=" * 80)
-                        
-                        logger.info(f"📥 Received audio chunk #{audio_chunks_received}: {len(base64_audio):,} chars")
-                    
+                        # --- Send base64 chunk to client as JSON message ---
+                        await websocket.send_json({
+                            "type": "audio_chunk",
+                            "chunk_index": audio_chunks_received,
+                            "base64_audio": base64_audio
+                        })
+                        logger.info(f"📤 Sent audio chunk #{audio_chunks_received} to client ({len(base64_audio)} chars)")
+
                     if data.get("final"):
-                        print(f"\n✅ MURF WEBSOCKET TTS COMPLETE!")
-                        print(f"   📊 Total chunks received: {audio_chunks_received}")
-                        print(f"   📊 Total base64 characters: {total_base64_chars:,}")
-                        print(f"   🎯 Ready for audio playback!")
-                        print("=" * 80)
-                        
-                        logger.info(f"✅ MURF TTS COMPLETE - {audio_chunks_received} chunks, {total_base64_chars:,} total chars")
+                        await websocket.send_json({
+                            "type": "audio_stream_complete",
+                            "total_chunks": audio_chunks_received
+                        })
+                        logger.info("✅ Sent audio_stream_complete")
                         break
-                        
+
                 except websockets.exceptions.ConnectionClosed:
                     logger.info("🔌 Murf WebSocket connection closed")
                     break
                 except Exception as chunk_error:
                     logger.error(f"❌ Error processing Murf response: {chunk_error}")
                     break
-                    
+
     except Exception as e:
         logger.error(f"❌ Error in Murf WebSocket TTS: {e}")
-        print(f"❌ MURF WEBSOCKET ERROR: {e}")
 
 
 # --- Stream LLM response and send to Murf WebSocket TTS ---
-async def stream_llm_response_with_murf_tts(user_text: str, session_id: str) -> str:
+async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, websocket: WebSocket) -> str:
     try:
         history = chat_histories.get(session_id, [])
         model = genai.GenerativeModel(
@@ -220,8 +211,8 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str) -> 
         print("=" * 60)
         
         if text_chunks and MURF_KEY:
-            # Use static context ID instead of dynamic one
-            await murf_websocket_tts(text_chunks, STATIC_MURF_CONTEXT)
+            # Pass websocket to TTS function
+            await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
         
         chat_histories[session_id] = chat.history
         
@@ -345,7 +336,6 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 while True:
                     transcript_data = await transcript_queue.get()
-                    # Forward transcription immediately
                     await websocket_ref.send_json({
                         "type": "transcript",
                         "transcript": transcript_data["transcript"],
@@ -353,10 +343,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         "confidence": transcript_data.get("confidence", 0.0)
                     })
 
-                    # On end_of_turn, stream LLM response WITH Murf TTS
                     if transcript_data.get("end_of_turn", False):
                         user_text = transcript_data["transcript"]
-                        llm_text = await stream_llm_response_with_murf_tts(user_text, session_id)
+                        # Pass websocket_ref to the function
+                        llm_text = await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
                         await websocket_ref.send_json({
                             "type": "llm_response",
                             "text": llm_text,

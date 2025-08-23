@@ -1,5 +1,3 @@
-// Meyme - Modern AI Voice Agent JavaScript
-// Modified for real-time streaming and chat history display
 
 // This function is now a self-contained module
 (function() {
