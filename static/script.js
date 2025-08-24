@@ -62,6 +62,10 @@
         const BUFFER_SIZE = 4096;
         const PLAYBACK_SAMPLE_RATE = 44100; // typical TTS output
 
+        // Add this after your existing state variables
+        let sessionId = localStorage.getItem('sessionId') || `session_${Date.now()}`;
+        localStorage.setItem('sessionId', sessionId);
+
         // --- Recording Pipeline ---
         const toggleRecording = async () => {
             if (isRecording) {
@@ -515,6 +519,34 @@
             voiceButton.classList.remove('recording');
             micIcon.className = 'fas fa-microphone';
         };
+
+        // Add function to load chat history
+        async function loadChatHistory() {
+            try {
+                const response = await fetch(`/api/history/${sessionId}`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    const chatHistory = document.getElementById('chatHistory');
+                    chatHistory.innerHTML = ''; // Clear existing messages
+                    
+                    // Display messages in reverse chronological order
+                    data.history.reverse().forEach(msg => {
+                        appendMessage(
+                            msg.role === 'user' ? 'user' : 'assistant',
+                            msg.content
+                        );
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+            }
+        }
+
+        // Call this when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadChatHistory();
+            // ...existing initialization code...
+        });
 
         // Main mic button binding
         voiceButton.addEventListener('click', toggleRecording);

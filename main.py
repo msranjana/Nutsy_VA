@@ -28,6 +28,7 @@ import json
 import threading
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+from database import ChatDatabase
 
 
 # Configure logging
@@ -90,6 +91,9 @@ else:
 
 # In-memory datastore for chat history
 chat_histories: Dict[str, List[Dict[str, Any]]] = {}
+
+# Initialize database
+db = ChatDatabase()
 
 
 # Pre-generated fallback audio
@@ -189,6 +193,9 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
 # --- Stream LLM response and send to Murf WebSocket TTS ---
 async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, websocket: WebSocket) -> str:
     try:
+        # Save user message to database
+        db.add_message(session_id, "user", user_text)
+        
         history = chat_histories.get(session_id, [])
         model = genai.GenerativeModel(
             "gemini-1.5-flash",
@@ -224,9 +231,13 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
             # Pass websocket to TTS function
             await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
         
+        # Save AI response to database
+        full_response = "".join(text_chunks)
+        db.add_message(session_id, "assistant", full_response)
+        
         chat_histories[session_id] = chat.history
         
-        return accumulated_response.strip()
+        return full_response.strip()
     except Exception as e:
         logger.error(f"Error in streaming LLM response with Murf TTS: {e}")
         return f"Sorry, I'm having trouble processing that right now. {str(e)}"
@@ -432,3 +443,12 @@ async def health_check():
 @app.get("/")
 async def serve_ui(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+# Add endpoint to fetch chat history
+@app.get("/api/history/{session_id}")
+async def get_chat_history(session_id: str):
+    try:
+        history = db.get_session_history(session_id)
+        return {"status": "success", "history": history}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

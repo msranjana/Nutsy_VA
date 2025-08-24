@@ -81,13 +81,13 @@ h1 {
 
 /* Chat history styling */
 .chat-history {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin: 2rem 0;
-    min-height: 300px;
-    max-height: 500px;
+    max-height: 400px;
     overflow-y: auto;
+    margin: 20px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -289,15 +289,16 @@ h1 {
     /* All relevant properties have been moved or adapted to the new classes. */
     display: none; /* To ensure they don't appear in the final output */
 }
+
 /* Styling for the chat history container */
 .chat-history {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-top: 1rem;
-    min-height: 200px; /* Gives the container a minimum height */
-    max-height: 300px; /* Ensures a scrollbar appears for long conversations */
+    max-height: 400px;
     overflow-y: auto;
+    margin: 20px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -322,11 +323,9 @@ h1 {
 }
 
 /* AI message bubble */
-.ai-message {
-    background-color: #2A2D35; /* Dark color for AI messages */
-    color: white;
-    align-self: flex-start; /* Aligns messages to the left side */
-    text-align: left;
+.assistant-message {
+    background: #f5f5f5;
+    margin-right: 20%;
 }
 
 /* Interim messages (while user is speaking) */
