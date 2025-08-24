@@ -166,48 +166,7 @@ h1 {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* --- Meyme Card Styling (New) --- */
-.meyme-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 40px 30px;
-    text-align: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    transition: transform 0.3s ease;
-}
-
-.meyme-card:hover {
-    transform: translateY(-5px);
-}
-
-.meyme-pfp {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.5);
-    object-fit: cover;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.meyme-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 5px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.meyme-subtitle {
-    font-size: 1rem;
-    font-weight: 400;
-    opacity: 0.8;
-    margin-bottom: 30px;
-}
-
-/* --- Voice Button Styling (New) --- */
+/* --- Voice Agent Card Styling --- */
 .voice-button-container {
     position: relative;
     display: flex;

@@ -42,7 +42,7 @@ ASSEMBLY_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Meyme prompt for Gemini
-MEYME_SYSTEM_PROMPT = """
+SYSTEM_PROMPT = """
 You are a helpful and friendly AI voice assistant.
 Personality traits:
 - Warm and welcoming to all users
@@ -72,7 +72,7 @@ else:
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=MEYME_SYSTEM_PROMPT)
+        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
         logger.info("✅ Gemini model initialized with personality.")
     except Exception as e:
         logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
@@ -192,7 +192,7 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         history = chat_histories.get(session_id, [])
         model = genai.GenerativeModel(
             "gemini-1.5-flash",
-            system_instruction=MEYME_SYSTEM_PROMPT
+            system_instruction=SYSTEM_PROMPT
         )
         chat = model.start_chat(history=history)
         
@@ -417,10 +417,10 @@ async def websocket_endpoint(websocket: WebSocket):
 # --- HEALTH CHECK ENDPOINT ---
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Meyme voice agent"""
+    """Health check endpoint for Voice Agent"""
     return {
         "status": "healthy",
-        "service": "Meyme Voice Agent",
+        "service": "Voice Agent",
         "apis": {
             "assembly_ai": bool(ASSEMBLY_KEY),
             "gemini": bool(GEMINI_API_KEY),
