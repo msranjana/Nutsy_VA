@@ -140,6 +140,7 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
             await ws.send(json.dumps(text_msg))
             
             audio_chunks_received = 0
+            total_base64_chars = 0  # Track total characters
 
             while True:
                 try:
@@ -149,7 +150,8 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
                     if "audio" in data:
                         audio_chunks_received += 1
                         base64_audio = data["audio"]
-                        # --- Send base64 chunk to client as JSON message ---
+                        total_base64_chars += len(base64_audio)  # Add to total
+                        
                         await websocket.send_json({
                             "type": "audio_chunk",
                             "chunk_index": audio_chunks_received,
@@ -158,11 +160,22 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
                         logger.info(f"📤 Sent audio chunk #{audio_chunks_received} to client ({len(base64_audio)} chars)")
 
                     if data.get("final"):
+                        # Send stream complete message
                         await websocket.send_json({
                             "type": "audio_stream_complete",
                             "total_chunks": audio_chunks_received
                         })
                         logger.info("✅ Sent audio_stream_complete")
+
+                        # Send final audio complete message with stats
+                        await websocket.send_json({
+                            "type": "audio_complete",
+                            "total_chunks": audio_chunks_received,
+                            "total_base64_chars": total_base64_chars,
+                            "accumulated_chunks": audio_chunks_received,
+                            "audio_format": "WAV"
+                        })
+                        logger.info("✅ Sent audio_complete for frontend compatibility")
                         break
 
                 except websockets.exceptions.ConnectionClosed:

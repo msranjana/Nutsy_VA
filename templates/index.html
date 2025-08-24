@@ -1,35 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Agent Chat</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Agent Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="chat-container">
-            <header>
-                <h1>Voice Agent Chat</h1>
-                <p class="subtitle">Converse by voice — each turn is shown in chat below. AI responds using context memory!</p>
-            </header>
-
-            <div id="statusMessage" class="status-message">
-                Press the mic button to start talking
-            </div>
-
-            <div class="chat-history" id="chatHistory">
-                </div>
-
-            <div class="control-panel">
-                <button id="voiceButton" class="speak-button">
-                    <i class="fas fa-microphone" id="micIcon"></i>
-                    Speak
-                </button>
-            </div>
-        </div>
-    </div>
-    <script src="/static/script.js"></script>
+    <div class="container">
+        <div class="chat-container">
+            <header>
+                <h1>Voice Agent Chat</h1>
+                <p class="subtitle">Converse by voice — each turn is shown in chat below. AI responds using context memory!</p>
+            </header>
+            <div id="statusMessage" class="status-message">
+                Press the mic button to start talking
+            </div>
+            <div class="chat-history" id="chatHistory">
+            </div>
+            <div class="control-panel">
+                <button id="voiceButton" class="speak-button">
+                    <i class="fas fa-microphone" id="micIcon"></i>
+                    Speak
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ADD AUDIO PLAYER HERE -->
+    <audio id="audioPlayer" style="display:none"></audio>
+    <script src="/static/script.js"></script>
 </body>
 </html>
