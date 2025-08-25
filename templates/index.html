@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Agent Chat</title>
+    <title>Nutsy - The Hyperactive Squirrel AI</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -11,11 +11,12 @@
     <div class="container">
         <div class="chat-container">
             <header>
-                <h1>Voice Agent Chat</h1>
-                <p class="subtitle">Converse by voice — each turn is shown in chat below. AI responds using context memory!</p>
+                <h1>Chat with Nutsy! 🐿️</h1>
+                <p class="subtitle">Warning: May get distracted by shiny things and randomly mention nuts!</p>
             </header>
+            
             <div id="statusMessage" class="status-message">
-                Press the mic button to start talking
+                *bouncing excitedly* Press the acorn button to start chatting!
             </div>
             
             <div id="chatHistory" class="chat-history">
@@ -24,13 +25,12 @@
             
             <div class="control-panel">
                 <button id="voiceButton" class="speak-button">
-                    <i class="fas fa-microphone" id="micIcon"></i>
-                    Speak
+                    <i class="fas fa-acorn" id="micIcon"></i>
+                    Talk to Nutsy!
                 </button>
             </div>
         </div>
     </div>
-    <!-- ADD AUDIO PLAYER HERE -->
     <audio id="audioPlayer" style="display:none"></audio>
     <script src="/static/script.js"></script>
 </body>

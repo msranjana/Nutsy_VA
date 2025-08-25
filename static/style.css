@@ -12,7 +12,7 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    background: linear-gradient(135deg, #f4a261, #e76f51);
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -33,6 +33,8 @@ body {
     border-radius: 16px;
     padding: 2rem;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    animation: bounce 1s ease infinite;
 }
 
 header {
@@ -44,6 +46,9 @@ h1 {
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #2a9d8f, #264653);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
@@ -71,7 +76,9 @@ h1 {
 }
 
 .assistant-message {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(42, 157, 143, 0.2);
+    border-left: 4px solid #2a9d8f;
+    animation: popIn 0.3s ease forwards;
     color: white;
     margin-right: auto;
     text-align: left;
@@ -119,12 +126,13 @@ h1 {
 }
 
 .speak-button {
-    background: #22c55e;
-    color: white;
+    background: #2a9d8f;
+    animation: wiggle 2s ease-in-out infinite;
 }
 
 .speak-button:hover {
-    background: #16a34a;
+    background: #264653;
+    transform: scale(1.05) rotate(-5deg);
 }
 
 .stop-button {
@@ -150,6 +158,16 @@ h1 {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
 }
 
 /* Scrollbar styling */
@@ -269,5 +287,16 @@ h1 {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
     }
 }

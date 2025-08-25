@@ -129,41 +129,50 @@
                         console.log('Received websocket message:', data); // Debug log
 
                         switch(data.type) {
-                            case 'llm_response':
-                                // Handle LLM response
-                                console.log('Received LLM response:', data.text);
-                                // First append the final user transcript if available
-                                if (data.transcript) {
-                                    appendMessage('user', data.transcript);
-                                }
-                                // Then append the AI response
-                                appendMessage('assistant', data.text);
-                                return;
+                           case 'transcript':
+      if (data.transcript) {
+        if (data.is_partial) {
+          // Show interim transcript
+          statusMessage.textContent = data.transcript;
+          statusMessage.classList.remove('turn-complete', 'processing');
+          statusMessage.classList.add('speaking', 'partial');
+          appendMessage('interim', data.transcript);
+        } else if (data.end_of_turn) {
+          // Only update status—DO NOT appendMessage('user', ...) here!
+          statusMessage.textContent = data.transcript;
+          statusMessage.classList.remove('speaking', 'partial');
+          statusMessage.classList.add('turn-complete');
+          setTimeout(() => {
+            statusMessage.textContent = '🤖 AI Voice Agent is thinking...';
+            statusMessage.classList.remove('turn-complete');
+            statusMessage.classList.add('processing');
+          }, 1000);
+        }
+      }
+      break;
 
-                            case 'transcript':
-                                if (data.transcript) {
-                                    if (data.is_partial) {
-                                        // Handle interim transcripts
-                                        statusMessage.textContent = data.transcript;
-                                        statusMessage.classList.remove('turn-complete', 'processing');
-                                        statusMessage.classList.add('speaking', 'partial');
-                                        appendMessage('interim', data.transcript);
-                                    } else if (data.end_of_turn) {
-                                        // Handle final transcripts
-                                        statusMessage.textContent = data.transcript;
-                                        statusMessage.classList.remove('speaking', 'partial');
-                                        statusMessage.classList.add('turn-complete');
-                                        // Do not append user message here - wait for LLM response
-                                        setTimeout(() => {
-                                            statusMessage.textContent = '🤖 AI Voice Agent is thinking...';
-                                            statusMessage.classList.remove('turn-complete');
-                                            statusMessage.classList.add('processing');
-                                        }, 1000);
-                                    }
-                                }
-                                return;
+    case 'llm_response':
+      // Append user message exactly once for this turn—and ONLY here
+      if (data.transcript) {
+        appendMessage('user', data.transcript); // <-- Only place to append user message!
+      }
+      appendMessage('assistant', data.text);
+      break;
 
-                            // ... rest of your existing message type handlers ...
+    case 'audio_chunk':
+      // Play the audio chunk
+      if (data.base64_audio) {
+        playAudioChunk(data.base64_audio, data.chunk_index);
+      }
+      break;
+
+    case 'audio_stream_complete':
+      console.log('Audio stream complete:', data);
+      break;
+
+    case 'audio_complete':
+      console.log('Audio playback complete. Stats:', data);
+      break;
                         }
                     } catch (e) {
                         console.error('Error parsing WebSocket message:', e);
