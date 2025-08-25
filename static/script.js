@@ -6,33 +6,48 @@
             console.error('Chat history element not found!');
             return;
         }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}-message`;
-        if (type === 'user') {
-            // Remove any previous interim message before adding the final user message
-            const existingInterim = document.getElementById('interimMessage');
-            if (existingInterim) {
-                existingInterim.remove();
-            }
-            messageDiv.textContent = `You: ${text}`;
-        } else if (type === 'interim') {
-            // Check if an interim message already exists and update it
-            let interimMessage = document.getElementById('interimMessage');
-            if (interimMessage) {
-                interimMessage.textContent = `(Listening...) ${text}`;
-            } else {
-                interimMessage = document.createElement('div');
-                interimMessage.id = 'interimMessage';
-                interimMessage.className = 'message interim-message';
-                interimMessage.textContent = `(Listening...) ${text}`;
-                chatHistory.appendChild(interimMessage);
-            }
+        
+        // Handle different message types
+        switch(type) {
+            case 'user':
+                const existingInterim = document.getElementById('interimMessage');
+                if (existingInterim) {
+                    existingInterim.remove();
+                }
+                messageDiv.textContent = `You: ${text}`;
+                break;
+                
+            case 'assistant':
+                messageDiv.textContent = `AI: ${text}`;
+                // Add visual feedback
+                messageDiv.style.opacity = '0';
+                setTimeout(() => {
+                    messageDiv.style.opacity = '1';
+                }, 100);
+                break;
+                
+            case 'interim':
+                // Update or create interim message
+                let interimMessage = document.getElementById('interimMessage');
+                if (interimMessage) {
+                    interimMessage.textContent = `(Listening...) ${text}`;
+                    return;
+                } else {
+                    messageDiv.id = 'interimMessage';
+                    messageDiv.textContent = `(Listening...) ${text}`;
+                }
+                break;
         }
-        // Add final messages to the chat history
+
+        // Add non-interim messages to chat history
         if (type !== 'interim') {
             chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            console.log(`Appended ${type} message:`, text); // Debug log
         }
-        chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
     // ====== Main App Logic ======
@@ -111,72 +126,44 @@
                 socket.onmessage = async (event) => {
                     try {
                         const data = JSON.parse(event.data);
+                        console.log('Received websocket message:', data); // Debug log
 
-                        // Chunks for TTS response streaming
-                        if (data.type === 'audio_chunk') {
-                            accumulatedAudioChunks.push(data.base64_audio);
-                            playAudioChunk(data.base64_audio, data.chunk_index);
-                            statusMessage.textContent = `🎵 AI Voice Agent is speaking...`;
-                            statusMessage.classList.remove('turn-complete', 'processing', 'speaking', 'partial');
-                            statusMessage.classList.add('speaking');
-                            return;
-                        }
+                        switch(data.type) {
+                            case 'llm_response':
+                                // Handle LLM response
+                                console.log('Received LLM response:', data.text);
+                                // First append the final user transcript if available
+                                if (data.transcript) {
+                                    appendMessage('user', data.transcript);
+                                }
+                                // Then append the AI response
+                                appendMessage('assistant', data.text);
+                                return;
 
-                        // All audio chunks received, play as one response
-                        if (data.type === 'audio_complete') {
-                            if (accumulatedAudioChunks.length > 0) {
-                                await assembleAndPlayCompleteAudio(accumulatedAudioChunks);
-                                accumulatedAudioChunks = [];
-                            } else {
-                                statusMessage.textContent = '❌ No audio received';
-                            }
-                            if (socket && socket.readyState === WebSocket.OPEN) socket.close();
-                            return;
-                        }
+                            case 'transcript':
+                                if (data.transcript) {
+                                    if (data.is_partial) {
+                                        // Handle interim transcripts
+                                        statusMessage.textContent = data.transcript;
+                                        statusMessage.classList.remove('turn-complete', 'processing');
+                                        statusMessage.classList.add('speaking', 'partial');
+                                        appendMessage('interim', data.transcript);
+                                    } else if (data.end_of_turn) {
+                                        // Handle final transcripts
+                                        statusMessage.textContent = data.transcript;
+                                        statusMessage.classList.remove('speaking', 'partial');
+                                        statusMessage.classList.add('turn-complete');
+                                        // Do not append user message here - wait for LLM response
+                                        setTimeout(() => {
+                                            statusMessage.textContent = '🤖 AI Voice Agent is thinking...';
+                                            statusMessage.classList.remove('turn-complete');
+                                            statusMessage.classList.add('processing');
+                                        }, 1000);
+                                    }
+                                }
+                                return;
 
-                        // Handle STT transcripts (both partial and final/turn_end)
-                        if (data.type === 'transcript' && data.transcript) {
-                            if (data.is_partial) {
-                                statusMessage.textContent = data.transcript;
-                                statusMessage.classList.remove('turn-complete', 'processing');
-                                statusMessage.classList.add('speaking', 'partial');
-                                appendMessage('interim', data.transcript);
-                            } else if (data.end_of_turn) {
-                                statusMessage.textContent = data.transcript;
-                                statusMessage.classList.remove('speaking', 'partial');
-                                statusMessage.classList.add('turn-complete');
-                                // Add to chat history
-                                appendMessage('user', data.transcript);
-                                setTimeout(() => {
-                                    statusMessage.textContent = '🤖 AI Voice Agent is thinking...';
-                                    statusMessage.classList.remove('turn-complete');
-                                    statusMessage.classList.add('processing');
-                                }, 1000);
-                            } else {
-                                statusMessage.textContent = data.transcript;
-                                statusMessage.classList.remove('turn-complete', 'processing', 'partial');
-                                statusMessage.classList.add('speaking');
-                            }
-                            return;
-                        }
-
-                        // Explicit turn_end message
-                        if (data.type === 'turn_end') {
-                            if (data.transcript && data.transcript.trim()) {
-                                statusMessage.textContent = data.transcript;
-                                statusMessage.classList.remove('speaking', 'partial');
-                                statusMessage.classList.add('turn-complete');
-                                appendMessage('user', data.transcript);
-                                setTimeout(() => {
-                                    statusMessage.textContent = '🤖 AI Voice Agent is thinking...';
-                                    statusMessage.classList.remove('turn-complete');
-                                    statusMessage.classList.add('processing');
-                                }, 1500);
-                            } else {
-                                statusMessage.textContent = '🎤 Listening...';
-                                statusMessage.classList.remove('speaking', 'processing', 'turn-complete', 'partial');
-                            }
-                            return;
+                            // ... rest of your existing message type handlers ...
                         }
                     } catch (e) {
                         console.error('Error parsing WebSocket message:', e);
