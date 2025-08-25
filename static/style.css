@@ -1,7 +1,5 @@
 /* Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-
 
 /* Reset and base styles */
 * {
@@ -35,6 +33,7 @@ body {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
+/* Header styling */
 header {
     text-align: center;
     margin-bottom: 2rem;
@@ -44,6 +43,10 @@ h1 {
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #e879f9, #c084fc);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
@@ -52,19 +55,65 @@ h1 {
     line-height: 1.5;
 }
 
+/* Status message styling */
+.status-message {
+    text-align: center;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+}
+
+.status-message.speaking {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+
+.status-message.turn-complete {
+    background: rgba(255, 152, 0, 0.2);
+    color: #ffa726;
+}
+
+.status-message.processing {
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+}
+
+.status-message.partial {
+    font-style: italic;
+    opacity: 0.8;
+}
+
+/* Chat history styling */
+.chat-history {
+    height: 400px;
+    overflow-y: auto;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.8rem;
+    position: relative; /* Add this */
+}
+
 /* Message styling */
 .message {
-    padding: 12px 16px;
+    padding: 0.8rem 1rem;
     border-radius: 12px;
-    margin: 4px 0;
     max-width: 80%;
     word-wrap: break-word;
+    animation: fadeIn 0.3s ease;
     display: block !important;
-    transition: opacity 0.3s ease;
+    opacity: 1 !important;
+    margin-bottom: 0.5rem;
 }
 
 .user-message {
-    background-color: #4B9BFF;
+    background: #4B9BFF;
     color: white;
     margin-left: auto;
     text-align: right;
@@ -82,68 +131,51 @@ h1 {
     color: rgba(255, 255, 255, 0.8);
     font-style: italic;
     margin-left: auto;
+    opacity: 0.7 !important;
 }
 
-/* Chat history styling */
-.chat-history {
-    max-height: 400px;
-    overflow-y: auto;
-    margin: 20px 0;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1) !important;
-    display: flex !important;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
+/* Control panel styling */
 .control-panel {
     display: flex;
-    gap: 1rem;
     justify-content: center;
-    padding-top: 1rem;
-}
-
-.speak-button, .stop-button {
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
+    margin-top: 1.5rem;
 }
 
 .speak-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
     background: #22c55e;
     color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .speak-button:hover {
     background: #16a34a;
+    transform: translateY(-1px);
 }
 
-.stop-button {
+.speak-button.recording {
     background: #ef4444;
-    color: white;
-    opacity: 0.5;
-}
-
-.stop-button:enabled {
-    opacity: 1;
-}
-
-.stop-button:enabled:hover {
-    background: #dc2626;
-}
-
-/* Recording animation */
-.recording .speak-button {
     animation: pulse 2s infinite;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes pulse {
@@ -154,120 +186,25 @@ h1 {
 
 /* Scrollbar styling */
 .chat-history::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 .chat-history::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 .chat-history::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 .chat-history::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* --- Voice Agent Card Styling --- */
-.voice-button-container {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 150px; /* Space for the button and ripples */
-}
-
-.voice-button {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: none;
-    background: #FF69B4; /* Hot pink, a key color from the image */
-    color: white;
-    font-size: 2rem;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    transition: background-color 0.3s, transform 0.3s;
-    position: relative;
-    z-index: 10;
-}
-
-.voice-button:hover {
-    background: #ff85c1;
-    transform: scale(1.05);
-}
-
-/* Ripple animation for recording state */
-.voice-button.recording::before,
-.voice-button.recording::after {
-    content: '';
+/* Audio player styling (hidden but functional) */
+#meymeAudioPlayer {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: #FF69B4;
-    opacity: 0.4;
-    transform: translate(-50%, -50%) scale(1);
-    animation: ripple 2s infinite cubic-bezier(0.23, 1, 0.32, 1);
-    z-index: 1;
-}
-
-.voice-button.recording::after {
-    animation-delay: 1s;
-}
-
-@keyframes ripple {
-    0% {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 0.4;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1.5);
-        opacity: 0;
-    }
-}
-
-.voice-button.recording {
-    background: #ff4d99; /* Darker pink when recording */
-}
-
-/* --- Status Message Styling (New) --- */
-.status-message {
-    text-align: center;
-    padding: 0.8rem;
-    margin: 1rem 0;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.8);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-}
-
-.status-message.speaking {
-    background: rgba(34, 197, 94, 0.2);
-    color: #4ade80;
-}
-
-.status-message.turn-complete {
-    background: rgba(255, 152, 0, 0.2);
-    color: #ffa726;
-}
-
-/* Update message animations */
-.message {
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeIn 0.3s ease forwards;
-}
-
-@keyframes fadeIn {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    visibility: hidden;
 }

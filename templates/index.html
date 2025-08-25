@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Agent Chat</title>
+    <meta http-equiv="Permissions-Policy" content="microphone=()">
+    <title>Meyme - AI Voice Chat</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -11,9 +12,10 @@
     <div class="container">
         <div class="chat-container">
             <header>
-                <h1>Voice Agent Chat</h1>
-                <p class="subtitle">Converse by voice — each turn is shown in chat below. AI responds using context memory!</p>
+                <h1>Meyme</h1>
+                <p class="subtitle">Your sassy, cunning AI cat companion with attitude</p>
             </header>
+            
             <div id="statusMessage" class="status-message">
                 Press the mic button to start talking
             </div>
@@ -25,13 +27,15 @@
             <div class="control-panel">
                 <button id="voiceButton" class="speak-button">
                     <i class="fas fa-microphone" id="micIcon"></i>
-                    Speak
+                    <span>Speak</span>
                 </button>
             </div>
         </div>
     </div>
-    <!-- ADD AUDIO PLAYER HERE -->
-    <audio id="audioPlayer" style="display:none"></audio>
+
+    <!-- Audio player for TTS playback -->
+    <audio id="meymeAudioPlayer" style="display:none"></audio>
+    
     <script src="/static/script.js"></script>
 </body>
 </html>
