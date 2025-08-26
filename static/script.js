@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     const data = JSON.parse(event.data);
 
+    // Handle audio chunks
     if (data.type === 'audio_chunk') {
       accumulatedAudioChunks.push(data.base64_audio);
       playAudioChunk(data.base64_audio, data.chunk_index);
@@ -67,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Handle audio completion
     if (data.type === 'audio_complete') {
       (async () => {
         try {
@@ -88,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Append user's final transcript message as a chat message visibly
+    // Append user's final transcript message
     if (data.type === 'transcript' && data.transcript) {
       if (data.is_partial) {
         statusMessage.textContent = data.transcript;
@@ -98,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage.textContent = data.transcript;
         statusMessage.classList.remove('speaking', 'partial');
         statusMessage.classList.add('turn-complete');
-        // Append user message to chat
         appendMessage('user', data.transcript);
 
         setTimeout(() => {
@@ -114,16 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Append LLM assistant response (assuming it comes in a type 'llm_response')
-    // if (data.type === 'llm_response' && data.text) {
-    //   appendMessage('assistant', data.text);
-    //   return;
-    // }
-    // 👉 NEW: Assistant text message
-if (data.type === 'assistant_message' && data.text) {
-  appendMessage('assistant', data.text);
-  return;
-}
+    // Consolidated assistant message handling
+    if (data.type === 'assistant_message' && data.text) {
+      appendMessage('assistant', data.text);
+      return;
+    }
 
   } catch (e) {
     console.error('Error parsing WebSocket message:', e);
