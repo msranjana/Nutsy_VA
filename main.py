@@ -207,7 +207,7 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         )
         chat = model.start_chat(history=history)
         
-        # Print request info
+        # Debug info
         print("\n" + "=" * 60)
         print(f"🔄 LLM REQUEST:")
         print(f"Session: {session_id}")
@@ -224,66 +224,35 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
                 accumulated_response += chunk.text
                 text_chunks.append(chunk.text)
         
-        # Print response info
+        # Debug print full LLM response
         print("\n" + "=" * 60)
         print(f"✅ LLM RESPONSE:")
         print(f"Full response: '{accumulated_response.strip()}'")
         print(f"API URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash")
         print("=" * 60)
         
-        # Build assistant response
+        # Get full response text 
         full_response = "".join(text_chunks)
+        
+       # 👉 NEW: Send assistant text to frontend immediately
+        await websocket.send_json({
+            "type": "assistant_message",   # <-- frontend listens for this
+            "text": full_response.strip(), # <-- LLM’s text reply
+             "transcript": user_text        # <-- what user said
+        })
+        logger.info("✅ Sent assistant_message to frontend")
+        # THEN: Save to database and update history
         db.add_message(session_id, "assistant", full_response)
         chat_histories[session_id] = chat.history
 
-        # Send LLM response before TTS audio chunks
-        await websocket.send_json({
-            "type": "llm_response",
-            "text": full_response.strip(),
-            "transcript": user_text
-        })
-
-        logger.info("✅ Sent llm_response message to frontend")
-
-        # Then stream audio chunks
+        # FINALLY: Start TTS streaming if available
         if text_chunks and MURF_KEY:
             await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
-    
+        
         return full_response.strip()
 
     except Exception as e:
         logger.error(f"Error in streaming LLM response with Murf TTS: {e}")
-        return f"Sorry, I'm having trouble processing that right now. {str(e)}"
-
-
-# Your existing stream_llm_response function (unchanged)
-async def stream_llm_response(user_text: str, session_id: str) -> str:
-    try:
-        history = chat_histories.get(session_id, [])
-        model = genai.GenerativeModel(
-            "gemini-1.5-flash",
-            system_instruction="""
-            You are an AI voice assistant. Keep responses natural and concise.
-            Focus on being helpful while maintaining a conversational tone.
-            Responses should be 1-2 sentences for voice interaction.
-            """
-        )
-        chat = model.start_chat(history=history)
-        logger.info(f"Processing user input: '{user_text}'")
-        accumulated_response = ""
-        def process_stream():
-            nonlocal accumulated_response
-            response_stream = chat.send_message(user_text, stream=True)
-            for chunk in response_stream:
-                if chunk.text:
-                    print(chunk.text, end="", flush=True)
-                    accumulated_response += chunk.text
-        with ThreadPoolExecutor() as executor:
-            await asyncio.get_event_loop().run_in_executor(executor, process_stream)
-        chat_histories[session_id] = chat.history
-        return accumulated_response.strip()
-    except Exception as e:
-        logger.error(f"Error in streaming LLM response: {e}")
         return f"Sorry, I'm having trouble processing that right now. {str(e)}"
 
 
@@ -381,11 +350,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         user_text = transcript_data["transcript"]
                         # Pass websocket_ref to the function
                         llm_text = await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
-                        await websocket_ref.send_json({
-                            "type": "llm_response",
-                            "text": llm_text,
-                            "transcript": user_text
-                        })
+                        # await websocket_ref.send_json({
+                        #     "type": "llm_response",
+                        #     "text": llm_text,
+                        #     "transcript": user_text
+                        # })
             except asyncio.CancelledError:
                 pass
             except Exception as e:

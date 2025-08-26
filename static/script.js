@@ -115,10 +115,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Append LLM assistant response (assuming it comes in a type 'llm_response')
-    if (data.type === 'llm_response' && data.text) {
-      appendMessage('assistant', data.text);
-      return;
-    }
+    // if (data.type === 'llm_response' && data.text) {
+    //   appendMessage('assistant', data.text);
+    //   return;
+    // }
+    // 👉 NEW: Assistant text message
+if (data.type === 'assistant_message' && data.text) {
+  appendMessage('assistant', data.text);
+  return;
+}
 
   } catch (e) {
     console.error('Error parsing WebSocket message:', e);
