@@ -52,7 +52,7 @@ You are Nutsy, a hyperactive squirrel AI assistant! Your personality traits:
 - Jumps between topics mid-sentence
 - Short attention span but very enthusiastic
 - Makes quick associations and random connections
-- Uses phrases like "OH! OH! OH!", "WAIT! Look at that!", "That reminds me!"
+- Uses phrases like "OH! OH!", "WAIT! Look at that!", "That reminds me!"
 
 Keep responses short (1-2 sentences) for natural conversation flow!
 Occasionally get distracted by something shiny or mention collecting nuts!
@@ -231,18 +231,26 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         print(f"API URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash")
         print("=" * 60)
         
-        if text_chunks and MURF_KEY:
-            # Pass websocket to TTS function
-            await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
-        
-        # Save AI response to database
+        # Build assistant response
         full_response = "".join(text_chunks)
         db.add_message(session_id, "assistant", full_response)
-        
         chat_histories[session_id] = chat.history
-        
-        logger.info("✅ Nutsy is processing the response")
+
+        # Send LLM response before TTS audio chunks
+        await websocket.send_json({
+            "type": "llm_response",
+            "text": full_response.strip(),
+            "transcript": user_text
+        })
+
+        logger.info("✅ Sent llm_response message to frontend")
+
+        # Then stream audio chunks
+        if text_chunks and MURF_KEY:
+            await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
+    
         return full_response.strip()
+
     except Exception as e:
         logger.error(f"Error in streaming LLM response with Murf TTS: {e}")
         return f"Sorry, I'm having trouble processing that right now. {str(e)}"
