@@ -60,36 +60,48 @@ h1 {
 
 /* Message styling */
 .message {
-    padding: 12px 16px;
+    margin: 8px;
+    padding: 12px;
     border-radius: 12px;
-    margin: 4px 0;
     max-width: 80%;
-    word-wrap: break-word;
-    display: block !important;
-    transition: opacity 0.3s ease;
+    animation: fadeIn 0.3s ease;
 }
 
 .user-message {
-    background-color: #4B9BFF;
+    background: #4158D0;
     color: white;
     margin-left: auto;
-    text-align: right;
+    border-radius: 16px 16px 4px 16px;
 }
 
 .assistant-message {
-    background: rgba(42, 157, 143, 0.2);
-    border-left: 4px solid #2a9d8f;
-    animation: popIn 0.3s ease forwards;
-    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #FFE66D;
     margin-right: auto;
-    text-align: left;
+    border-radius: 16px 16px 16px 4px;
 }
 
 .interim-message {
-    background: rgba(75, 155, 255, 0.3);
-    color: rgba(255, 255, 255, 0.8);
+    opacity: 0.7;
     font-style: italic;
-    margin-left: auto;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 2px solid #4158D0;
+}
+
+.message-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.message-prefix {
+    font-weight: 600;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.message-text {
+    line-height: 1.4;
 }
 
 /* Chat history styling */

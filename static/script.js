@@ -55,63 +55,76 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       socket.onmessage = (event) => {
+  try {
+    const data = JSON.parse(event.data);
+
+    if (data.type === 'audio_chunk') {
+      accumulatedAudioChunks.push(data.base64_audio);
+      playAudioChunk(data.base64_audio, data.chunk_index);
+      statusMessage.textContent = `🎵 Nutsy is speaking...`;
+      statusMessage.classList.remove('turn-complete', 'processing', 'speaking', 'partial');
+      statusMessage.classList.add('speaking');
+      return;
+    }
+
+    if (data.type === 'audio_complete') {
+      (async () => {
         try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'audio_chunk') {
-            accumulatedAudioChunks.push(data.base64_audio);
-            playAudioChunk(data.base64_audio, data.chunk_index);
-            statusMessage.textContent = `🎵 Nutsy is speaking...`;  // Changed
-            statusMessage.classList.remove('turn-complete', 'processing', 'speaking', 'partial');
-            statusMessage.classList.add('speaking');
-            return;
+          statusMessage.textContent = '🎵 Nutsy is speaking...';
+          statusMessage.classList.remove('processing', 'turn-complete', 'partial');
+          statusMessage.classList.add('speaking');
+          if (accumulatedAudioChunks.length > 0) {
+            await assembleAndPlayCompleteAudio(accumulatedAudioChunks);
+          } else {
+            statusMessage.textContent = '❌ No audio received';
           }
-
-          if (data.type === 'audio_complete') {
-            (async () => {
-              try {
-                statusMessage.textContent = '🎵 Nutsy is speaking...';  // Changed
-                statusMessage.classList.remove('processing', 'turn-complete', 'partial');
-                statusMessage.classList.add('speaking');
-                if (accumulatedAudioChunks.length > 0) {
-                  await assembleAndPlayCompleteAudio(accumulatedAudioChunks);
-                } else {
-                  statusMessage.textContent = '❌ No audio received';
-                }
-              } catch (error) {
-                statusMessage.textContent = '❌ Audio playback failed';
-              }
-            })();
-            if (socket && socket.readyState === WebSocket.OPEN) {
-              socket.close();
-            }
-            return;
-          }
-
-          if (data.type === 'transcript' && data.transcript) {
-            if (data.is_partial) {
-              statusMessage.textContent = data.transcript;
-              statusMessage.classList.remove('turn-complete', 'processing');
-              statusMessage.classList.add('speaking', 'partial');
-            } else if (data.end_of_turn) {
-              statusMessage.textContent = data.transcript;
-              statusMessage.classList.remove('speaking', 'partial');
-              statusMessage.classList.add('turn-complete');
-              setTimeout(() => {
-                statusMessage.textContent = '🤖 Meyme is thinking...';
-                statusMessage.classList.remove('turn-complete');
-                statusMessage.classList.add('processing');
-              }, 1000);
-            } else {
-              statusMessage.textContent = data.transcript;
-              statusMessage.classList.remove('turn-complete', 'processing', 'partial');
-              statusMessage.classList.add('speaking');
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing WebSocket message:', e);
+        } catch (error) {
+          statusMessage.textContent = '❌ Audio playback failed';
         }
-      };
+      })();
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
+      return;
+    }
+
+    // Append user's final transcript message as a chat message visibly
+    if (data.type === 'transcript' && data.transcript) {
+      if (data.is_partial) {
+        statusMessage.textContent = data.transcript;
+        statusMessage.classList.remove('turn-complete', 'processing');
+        statusMessage.classList.add('speaking', 'partial');
+      } else if (data.end_of_turn) {
+        statusMessage.textContent = data.transcript;
+        statusMessage.classList.remove('speaking', 'partial');
+        statusMessage.classList.add('turn-complete');
+        // Append user message to chat
+        appendMessage('user', data.transcript);
+
+        setTimeout(() => {
+          statusMessage.textContent = '🤖 Nutsy is thinking...';
+          statusMessage.classList.remove('turn-complete');
+          statusMessage.classList.add('processing');
+        }, 1000);
+      } else {
+        statusMessage.textContent = data.transcript;
+        statusMessage.classList.remove('turn-complete', 'processing', 'partial');
+        statusMessage.classList.add('speaking');
+      }
+      return;
+    }
+
+    // Append LLM assistant response (assuming it comes in a type 'llm_response')
+    if (data.type === 'llm_response' && data.text) {
+      appendMessage('assistant', data.text);
+      return;
+    }
+
+  } catch (e) {
+    console.error('Error parsing WebSocket message:', e);
+  }
+};
+
 
       socket.onclose = () => {
         stopRecording();
@@ -439,6 +452,67 @@ document.addEventListener('DOMContentLoaded', () => {
     view.setUint32(40, dataLength, true);
     return new Uint8Array(buffer);
   }
+
+  function appendMessage(type, text) {
+    const chatHistory = document.getElementById('chatHistory');
+    if (!chatHistory) {
+        console.error('Chat history element not found!');
+        return;
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    // Handle different message types with proper styling
+    switch(type) {
+        case 'user':
+            const existingInterim = document.getElementById('interimMessage');
+            if (existingInterim) {
+                existingInterim.remove();
+            }
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="message-prefix">You:</span> 
+                    <span class="message-text">${text}</span>
+                </div>`;
+            messageDiv.classList.add('user-message');
+            break;
+            
+        case 'assistant':
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="message-prefix">🐿️ Nutsy:</span>
+                    <span class="message-text">${text}</span>
+                </div>`;
+            messageDiv.classList.add('assistant-message');
+            // Add bounce animation
+            messageDiv.style.animation = 'bounceIn 0.3s ease forwards';
+            break;
+            
+        case 'interim':
+            // Update or create interim message
+            let interimMessage = document.getElementById('interimMessage');
+            if (interimMessage) {
+                interimMessage.querySelector('.message-text').textContent = text;
+                return;
+            } else {
+                messageDiv.id = 'interimMessage';
+                messageDiv.innerHTML = `
+                    <div class="message-content interim">
+                        <span class="message-prefix">(Listening...)</span>
+                        <span class="message-text">${text}</span>
+                    </div>`;
+                messageDiv.classList.add('interim-message');
+            }
+            break;
+    }
+
+    // Add non-interim messages to chat history
+    if (type !== 'interim') {
+        chatHistory.appendChild(messageDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+}
 
   voiceButton.addEventListener('click', toggleRecording);
 });
