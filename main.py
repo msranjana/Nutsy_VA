@@ -207,13 +207,7 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         )
         chat = model.start_chat(history=history)
         
-        # Debug info
-        print("\n" + "=" * 60)
-        print(f"🔄 LLM REQUEST:")
-        print(f"Session: {session_id}")
-        print(f"Input: '{user_text}'")
-        print("=" * 60)
-        
+       
         accumulated_response = ""
         text_chunks = []
         response_stream = chat.send_message(user_text, stream=True)
@@ -235,12 +229,16 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         full_response = "".join(text_chunks)
         
        # 👉 NEW: Send assistant text to frontend immediately
-        await websocket.send_json({
-            "type": "assistant_message",   # <-- frontend listens for this
-            "text": full_response.strip(), # <-- LLM’s text reply
-             "transcript": user_text        # <-- what user said
-        })
-        logger.info("✅ Sent assistant_message to frontend")
+        try:
+            await websocket.send_json({
+                "type": "assistant_message",
+                "text": full_response.strip(),
+                "transcript": user_text
+            })
+            logger.info(f"✅ Sent assistant_message to frontend: {full_response.strip()}")
+        except Exception as e:
+            logger.error(f"Error sending assistant_message: {e}")
+        
         # THEN: Save to database and update history
         db.add_message(session_id, "assistant", full_response)
         chat_histories[session_id] = chat.history
@@ -350,11 +348,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         user_text = transcript_data["transcript"]
                         # Pass websocket_ref to the function
                         llm_text = await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
-                        # await websocket_ref.send_json({
-                        #     "type": "llm_response",
-                        #     "text": llm_text,
-                        #     "transcript": user_text
-                        # })
+                        await websocket_ref.send_json({
+                            "type": "llm_response",
+                            "text": llm_text,
+                            "transcript": user_text
+                        })
             except asyncio.CancelledError:
                 pass
             except Exception as e:
