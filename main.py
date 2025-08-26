@@ -241,6 +241,7 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         
         chat_histories[session_id] = chat.history
         
+        logger.info("✅ Nutsy is processing the response")
         return full_response.strip()
     except Exception as e:
         logger.error(f"Error in streaming LLM response with Murf TTS: {e}")
