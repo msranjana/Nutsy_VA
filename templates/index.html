@@ -1,49 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Agent Challenge</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutsy - The Hyperactive Squirrel AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="main-layout">
-            
-            <!-- Right Side - Echo Bot Section -->
-            <!-- Right Side - Chat Agent Section -->
-<div class="chat-section">
-  <div class="content">
-    <h1 class="title">Voice Agent Chat</h1>
-    <p class="description">
-      Converse by voice — each turn is shown in chat below. AI responds using context memory!
-    </p>
-
-    <!-- Chat history appears here -->
-    <div id="chatHistory" class="chat-history"></div>
-    
-    <!-- Chat controls -->
-    <div class="chat-controls">
-      <button id="startRecording" class="record-button start" onclick="startRecording()">
-        🎙️ Speak
-      </button>
-      <button id="stopRecording" class="record-button stop" onclick="stopRecording()" disabled>
-        ⏹️ Stop
-      </button>
-      <!-- Optionally add keyboard input for manual testing -->
-      <!--
-      <input type="text" id="textMessage" placeholder="Type a message..." />
-      <button onclick="sendTextMessage()">Send</button>
-      -->
-    </div>
-
-    <!-- Audio player for agent responses -->
-    <audio id="playbackAudio" controls style="display:none"></audio>
-  </div>
-</div>
-
-        </div>
-    </div>
-    <script src="/static/script.js?v=5"></script>
+    <div class="container">
+        <div class="chat-container">
+            <header>
+                <h1>Chat with Nutsy! 🐿️</h1>
+                <p class="subtitle">Warning: May get distracted by shiny things and randomly mention nuts!</p>
+            </header>
+            
+            <div id="statusMessage" class="status-message">
+                *bouncing excitedly* Press the acorn button to chat with Nutsy!  <!-- Changed -->
+            </div>
+            
+            <div id="chatHistory" class="chat-history">
+                <!-- Messages will be added here dynamically -->
+            </div>
+            
+            <div class="control-panel">
+                <button id="voiceButton" class="speak-button">
+                    <i class="fas fa-acorn" id="micIcon"></i>
+                    Talk to Nutsy!
+                </button>
+            </div>
+        </div>
+    </div>
+    <audio id="audioPlayer" style="display:none" playsinline></audio>
+    <script src="/static/script.js"></script>
 </body>
 </html>

@@ -1,216 +1,478 @@
-const FALLBACK_MESSAGES = {
-    STT_ERROR: "I couldn't understand the audio. Could you try speaking again?",
-    LLM_ERROR: "I'm having trouble thinking right now. Could you try again in a moment?",
-    TTS_ERROR: "I understood you, but I'm having trouble speaking right now. Please try again.",
-    GENERIC_ERROR: "I'm having trouble connecting right now. Please try again."
-};
-
-const FALLBACK_AUDIO_URLS = {
-    STT_ERROR: "/static/audio/stt_error.mp3",
-    LLM_ERROR: "/static/audio/llm_error.mp3", 
-    TTS_ERROR: "/static/audio/tts_error.mp3",
-    GENERIC_ERROR: "/static/audio/generic_error.mp3"
-};
-
-if (!window.sessionStorage.getItem("session_id")) {
-    const newSessionId = crypto.randomUUID();
-    window.sessionStorage.setItem("session_id", newSessionId);
-    const url = new URL(window.location.href);
-    url.searchParams.set("session_id", newSessionId);
-    window.history.replaceState({}, "", url);
-}
-const sessionId = window.sessionStorage.getItem("session_id");
-
-function appendMessage(role, text) {
-    console.log(`💬 Appending ${role} message:`, text);
-    const chatHistory = document.getElementById('chatHistory');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}-message`;
-    
-    // Add prefix based on role
-    const prefix = role === 'user' ? 'You: ' : 'BOT: ';
-    messageDiv.textContent = `${prefix}${text}`;
-    
-    chatHistory.appendChild(messageDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-}
-
-// No legacy TTS functionality needed
-
-// Echo Bot Recording Functionality
-let mediaRecorder;
-let audioChunks = [];
-let audioBlob;
-let audioURL;
-
-async function startRecording() {
-    console.log('🎤 Starting recording...');
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = async () => {
-            console.log('🛑 Recording stopped, processing audio...');
-            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            audioURL = URL.createObjectURL(audioBlob);
-            await processLLMAudioBot();
-        };
-
-        mediaRecorder.start();
-        updateRecordingUI(true);
-        console.log('✅ Recording started successfully');
-    } catch (error) {
-        console.error('❌ Error starting recording:', error);
-    }
-}
-
-async function stopRecording() {
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
-    
-    mediaRecorder.stop();
-    if (mediaRecorder.stream) {
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-    }
-    updateRecordingUI(false);
-}
-
-function updateRecordingUI(isRecording) {
-    const startBtn = document.getElementById('startRecording');
-    const stopBtn = document.getElementById('stopRecording');
-
-    if (startBtn) startBtn.disabled = isRecording;
-    if (stopBtn) stopBtn.disabled = !isRecording;
-}
-
-async function processLLMAudioBot() {
-    try {
-        console.log('🤖 Processing audio with LLM Bot...');
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'recording.webm');
-        formData.append('voice_id', 'en-US-julia');
-
-        console.log('📤 Sending audio to server...');
-        const response = await fetch(`/agent/chat/${sessionId}`, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-        console.log('📥 Received response:', result);
-
-        if (result.success) {
-            console.log('🎯 Successfully processed audio');
-            appendMessage('user', result.user_transcript);
-            appendMessage('ai', result.assistant_response);
-
-            if (result.audio_urls && result.audio_urls.length > 0) {
-                console.log('🔊 Playing bot response audio...');
-                playAudioResponse(result.audio_urls[0]);
-            }
-        } else {
-            console.error('❌ Error:', result.error);
-            appendMessage('system', result.fallback_response);
-            
-            if (result.fallback_audio) {
-                console.log('🔊 Playing fallback audio...');
-                playAudioResponse(result.fallback_audio);
-            }
-        }
-    } catch (error) {
-        console.error('❌ Critical error:', error);
-        appendMessage('system', FALLBACK_MESSAGES.GENERIC_ERROR);
-        playAudioResponse(FALLBACK_AUDIO_URL);
-    }
-}
-
-function playAudioResponse(audioUrl) {
-    try {
-        const audio = new Audio(audioUrl);
-        audio.onended = () => {
-            console.log('🔄 Audio finished, starting new recording...');
-            startRecording();
-        };
-        audio.onerror = (error) => {
-            console.error('❌ Audio playback error:', error);
-            // If audio fails, still allow new recording
-            startRecording();
-        };
-        audio.play();
-    } catch (error) {
-        console.error('❌ Audio setup error:', error);
-        startRecording();
-    }
-}
-
-// When sending audio to backend:
-async function sendAudio(fileBlob) {
-    const formData = new FormData();
-    formData.append("file", fileBlob, "query.webm");
-    formData.append("voice_id", "en-US-julia");
-
-    try {
-        const response = await fetch(`/agent/chat/${sessionId}`, {
-            method: "POST",
-            body: formData
-        });
-
-        const result = await response.json();
-        console.log("LLM Result:", result);
-
-        // Display the actual transcribed text instead of [Voice message]
-        appendMessage('user', result.user_transcript);
-        appendMessage('ai', result.assistant_response);
-
-        // Play assistant's voice output, then auto-record again
-        if (result.audio_urls.length > 0) {
-            playAndListen(result.audio_urls[0]);
-        }
-    } catch (error) {
-        console.error("Error:", error);
-    }
-}
-
-// Add this near the top of the file, after sessionId initialization
 document.addEventListener('DOMContentLoaded', () => {
-    const generateButton = document.querySelector('.generate-button');
-    if (generateButton) {
-        generateButton.addEventListener('click', async () => {
-            const textInput = document.getElementById('textInput');
-            const voiceSelect = document.getElementById('voiceSelect');
-            
-            if (!textInput || !textInput.value.trim()) {
-                console.error('No text to generate speech from');
-                return;
-            }
+  const voiceButton = document.getElementById('voiceButton');
+  const micIcon = document.getElementById('micIcon');
+  const statusMessage = document.getElementById('statusMessage');
+  let isRecording = false;
+  let audioContext = null;
+  let mediaStreamSource = null;
+  let processor = null;
+  let socket = null;
+  let accumulatedAudioChunks = [];
+  let playbackAudioContext = null;
+  let isPlayingAudio = false;
+  let currentAudioSource = null;
+  let playbackStartTime = 0;
+  let totalPlaybackDuration = 0;
+  const SAMPLE_RATE = 16000;
+  const BUFFER_SIZE = 4096;
+  const PLAYBACK_SAMPLE_RATE = 44100;
 
-            try {
-                const response = await fetch('/tts', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: textInput.value.trim(),
-                        voice_id: voiceSelect ? voiceSelect.value : 'en-US-julia'
-                    })
-                });
-
-                const result = await response.json();
-                if (result.audio_url) {
-                    const audioPlayer = document.getElementById('audioPlayer');
-                    if (audioPlayer) {
-                        audioPlayer.src = result.audio_url;
-                        document.getElementById('audioSection').style.display = 'block';
-                    }
-                }
-            } catch (error) {
-                console.error('Error generating speech:', error);
-            }
-        });
+  const toggleRecording = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      await startRecording();
     }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      mediaStreamSource = audioContext.createMediaStreamSource(stream);
+      processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
+
+      processor.onaudioprocess = (e) => {
+        if (!isRecording || !socket || socket.readyState !== WebSocket.OPEN) return;
+        const inputData = e.inputBuffer.getChannelData(0);
+        const downsampledBuffer = downsampleBuffer(inputData, audioContext.sampleRate, SAMPLE_RATE);
+        const pcm16 = to16BitPCM(downsampledBuffer);
+        socket.send(pcm16);
+      };
+
+      mediaStreamSource.connect(processor);
+      processor.connect(audioContext.destination);
+
+      socket = new WebSocket(`ws://${window.location.host}/ws`);
+
+      socket.onopen = () => {
+        isRecording = true;
+        updateUIForRecording();
+        statusMessage.textContent = '🎙️ Nutsy is listening...';  // Changed
+        statusMessage.classList.add('show');
+        if (isPlayingAudio) stopAudioPlayback();
+        accumulatedAudioChunks = [];
+      };
+
+      socket.onmessage = async (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data); // Debug log
+
+        // Handle user transcript
+        if (data.type === 'transcript' && data.transcript) {
+            if (data.end_of_turn) {
+                console.log('Appending user message:', data.transcript); // Debug log
+                appendMessage('user', data.transcript);
+            } else {
+                console.log('Updating interim message:', data.transcript); // Debug log
+                appendMessage('interim', data.transcript);
+            }
+        }
+
+        // Handle assistant message
+        if (data.type === 'assistant_message' && data.text) {
+            console.log('Appending assistant message:', data.text); // Debug log
+            appendMessage('assistant', data.text);
+        }
+
+        // Handle audio chunks
+        if (data.type === 'audio_chunk' && data.base64_audio) {
+            console.log(`Received audio chunk #${data.chunk_index}`); // Debug log
+            await playAudioChunk(data.base64_audio, data.chunk_index);
+        }
+
+        // Handle audio stream completion
+        if (data.type === 'audio_stream_complete') {
+            console.log('Audio stream complete:', data); // Debug log
+        }
+
+    } catch (e) {
+        console.error('Error processing WebSocket message:', e);
+    }
+};
+
+
+      socket.onclose = () => {
+        stopRecording();
+      };
+
+      socket.onerror = (error) => {
+        stopRecording();
+      };
+
+    } catch (error) {
+      statusMessage.textContent = '❌ Microphone access denied. Please allow microphone permissions.';
+    }
+  };
+
+  const stopRecording = () => {
+    if (isRecording) {
+      isRecording = false;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(JSON.stringify({
+            type: 'end_turn',
+            message: 'User finished speaking'
+          }));
+        } catch (error) {}
+        setTimeout(() => {
+          if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+        }, 30000);
+      }
+      if (processor) {
+        processor.disconnect();
+        processor = null;
+      }
+      if (mediaStreamSource) {
+        mediaStreamSource.disconnect();
+        mediaStreamSource = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      updateUIForStopped();
+      statusMessage.textContent = '🤖 Nutsy is thinking...';  // Changed
+      statusMessage.classList.remove('speaking', 'partial', 'turn-complete');
+      statusMessage.classList.add('processing');
+    }
+  };
+
+  function downsampleBuffer(buffer, originalSampleRate, newSampleRate) {
+    if (newSampleRate === originalSampleRate) {
+      return buffer;
+    }
+    const ratio = originalSampleRate / newSampleRate;
+    const newLength = Math.round(buffer.length / ratio);
+    const result = new Float32Array(newLength);
+    let offsetResult = 0;
+    let offsetBuffer = 0;
+    while (offsetResult < result.length) {
+      const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+      let accum = 0;
+      let count = 0;
+      for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+        accum += buffer[i];
+        count++;
+      }
+      result[offsetResult] = accum / count;
+      offsetResult++;
+      offsetBuffer = nextOffsetBuffer;
+    }
+    return result;
+  }
+
+  function to16BitPCM(input) {
+    const dataLength = input.length * 2;
+    const output = new Int16Array(dataLength / 2);
+    for (let i = 0; i < input.length; i++) {
+      let s = Math.max(-1, Math.min(1, input[i]));
+      output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return output.buffer;
+  }
+
+  const updateUIForRecording = () => {
+    voiceButton.classList.add('recording');
+    micIcon.className = 'fas fa-stop';
+  };
+
+  const updateUIForStopped = () => {
+    voiceButton.classList.remove('recording');
+    micIcon.className = 'fas fa-microphone';
+  };
+
+  async function initPlaybackAudioContext() {
+    if (!playbackAudioContext) {
+      try {
+        playbackAudioContext = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: PLAYBACK_SAMPLE_RATE
+        });
+        if (playbackAudioContext.state === 'suspended') {
+          await playbackAudioContext.resume();
+        }
+      } catch (error) {
+        throw error;
+      }
+    }
+    return playbackAudioContext;
+  }
+
+  async function base64ToAudioBuffer(base64Audio, chunkIndex) {
+    try {
+      const binaryString = atob(base64Audio);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const context = await initPlaybackAudioContext();
+      const wavHeader = binaryString.substring(0, 12);
+      const isValidWav = wavHeader.startsWith('RIFF') && wavHeader.includes('WAVE');
+      if (!isValidWav && chunkIndex > 1) {
+        throw new Error(`Chunk #${chunkIndex} is not a valid WAV file`);
+      }
+      return await context.decodeAudioData(bytes.buffer);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async function playAudioChunk(base64Audio, chunkIndex) {
+    try {
+      const audioBuffer = await base64ToAudioBuffer(base64Audio, chunkIndex);
+      const context = await initPlaybackAudioContext();
+      const source = context.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(context.destination);
+      let startTime = context.currentTime;
+      if (isPlayingAudio) {
+        startTime = Math.max(context.currentTime, playbackStartTime + totalPlaybackDuration);
+      } else {
+        isPlayingAudio = true;
+        playbackStartTime = context.currentTime;
+        totalPlaybackDuration = 0;
+      }
+      totalPlaybackDuration += audioBuffer.duration;
+      source.start(startTime);
+      source.onended = () => {
+        if (context.currentTime >= playbackStartTime + totalPlaybackDuration - 0.1) {
+          isPlayingAudio = false;
+          playbackStartTime = 0;
+          totalPlaybackDuration = 0;
+          setTimeout(() => {
+            statusMessage.textContent = '🎙️ Press the mic button to speak to Nutsy!';  // Changed
+            statusMessage.classList.remove('speaking', 'processing');
+          }, 500);
+        }
+      };
+      currentAudioSource = source;
+    } catch (error) {}
+  }
+
+  function stopAudioPlayback() {
+    if (currentAudioSource) {
+      try { currentAudioSource.stop(); } catch { }
+      currentAudioSource = null;
+    }
+    isPlayingAudio = false;
+    playbackStartTime = 0;
+    totalPlaybackDuration = 0;
+  }
+
+  async function assembleAndPlayCompleteAudio(audioChunks) {
+    try {
+      if (isPlayingAudio) stopAudioPlayback();
+      await playCombinedWavChunks(audioChunks);
+    } catch (error) {
+      statusMessage.textContent = '❌ Audio assembly failed - trying fallback...';
+      try {
+        if (audioChunks.length > 0) {
+          const fallbackBuffer = await base64ToAudioBuffer(audioChunks, 'EMERGENCY_FALLBACK');
+          await playAssembledAudio(fallbackBuffer);
+        }
+      } catch {
+        statusMessage.textContent = '❌ Audio playback failed completely';
+        isPlayingAudio = false;
+        currentAudioSource = null;
+        setTimeout(() => {
+          statusMessage.textContent = '🎬 Press the mic button to try again';
+        }, 3000);
+      }
+    }
+  }
+
+  async function playCombinedWavChunks(base64Chunks) {
+    try {
+      const pcmData = [];
+      const SAMPLE_RATE = 44100;
+      const NUM_CHANNELS = 1;
+      const BIT_DEPTH = 16;
+      for (let i = 0; i < base64Chunks.length; i++) {
+        const bytes = base64ToUint8Array(base64Chunks[i]);
+        if (i === 0) {
+          const wavHeader = String.fromCharCode(...bytes.slice(0, 12));
+          if (wavHeader.startsWith('RIFF') && wavHeader.includes('WAVE')) {
+            pcmData.push(bytes.slice(44));
+          } else {
+            pcmData.push(bytes);
+          }
+        } else {
+          pcmData.push(bytes);
+        }
+      }
+      const totalPcmLength = pcmData.reduce((sum, chunk) => sum + chunk.length, 0);
+      const combinedPcm = new Uint8Array(totalPcmLength);
+      let offset = 0;
+      for (const chunk of pcmData) {
+        combinedPcm.set(chunk, offset); offset += chunk.length;
+      }
+      const wavHeader = createWavHeader(combinedPcm.length, SAMPLE_RATE, NUM_CHANNELS, BIT_DEPTH);
+      const finalWav = new Uint8Array(wavHeader.length + combinedPcm.length);
+      finalWav.set(wavHeader, 0);
+      finalWav.set(combinedPcm, wavHeader.length);
+      const blob = new Blob([finalWav], { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(blob);
+      const audioPlayer = document.getElementById('audioPlayer');
+      if (!audioPlayer) throw new Error('Audio player element not found');
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = 'none';
+      statusMessage.textContent = `🎵 Nutsy is speaking...`;  // Changed
+      statusMessage.classList.remove('processing', 'turn-complete', 'partial');
+      statusMessage.classList.add('speaking');
+
+      const onLoadedData = () => {
+        isPlayingAudio = true;
+        audioPlayer.play().catch(() => {
+          statusMessage.textContent = '🎵 Click the audio player for full response';
+        });
+      };
+      const onEnded = () => {
+        isPlayingAudio = false;
+        URL.revokeObjectURL(audioUrl);
+        audioPlayer.removeEventListener('loadeddata', onLoadedData);
+        audioPlayer.removeEventListener('ended', onEnded);
+        audioPlayer.removeEventListener('error', onError);
+        setTimeout(() => {
+          statusMessage.textContent = '🎙️ Press the mic button to speak to Nutsy!';  // Changed
+          statusMessage.classList.remove('speaking', 'processing');
+          accumulatedAudioChunks = [];
+        }, 500);
+      };
+      const onError = () => {
+        statusMessage.textContent = '❌ Audio playback failed';
+        statusMessage.classList.remove('speaking', 'processing');
+        isPlayingAudio = false;
+        audioPlayer.classList.remove('show');
+        URL.revokeObjectURL(audioUrl);
+        audioPlayer.removeEventListener('loadeddata', onLoadedData);
+        audioPlayer.removeEventListener('ended', onEnded);
+        audioPlayer.removeEventListener('error', onError);
+      };
+
+      audioPlayer.addEventListener('loadeddata', onLoadedData);
+      audioPlayer.addEventListener('ended', onEnded);
+      audioPlayer.addEventListener('error', onError);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async function playAssembledAudio(audioBuffer) {
+    try {
+      const context = await initPlaybackAudioContext();
+      const source = context.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(context.destination);
+      isPlayingAudio = true;
+      playbackStartTime = context.currentTime;
+      totalPlaybackDuration = audioBuffer.duration;
+      currentAudioSource = source;
+      statusMessage.textContent = `🎵 Nutsy is speaking...`;  // Changed
+      source.start(0);
+      source.onended = () => {
+        isPlayingAudio = false;
+        playbackStartTime = 0;
+        totalPlaybackDuration = 0;
+        currentAudioSource = null;
+        setTimeout(() => {
+          accumulatedAudioChunks = [];
+          statusMessage.textContent = '🎙️ Press the mic button to speak to Nutsy!';  // Changed
+          statusMessage.classList.remove('speaking', 'processing');
+        }, 500);
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  function base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function createWavHeader(dataLength, sampleRate = 44100, numChannels = 1, bitDepth = 16) {
+    const blockAlign = (numChannels * bitDepth) / 8;
+    const byteRate = sampleRate * blockAlign;
+    const buffer = new ArrayBuffer(44);
+    const view = new DataView(buffer);
+    function writeStr(offset, str) {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    }
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataLength, true);
+    return new Uint8Array(buffer);
+  }
+
+  function appendMessage(type, text) {
+    const chatHistory = document.getElementById('chatHistory');
+    if (!chatHistory) {
+        console.error('Chat history element not found!');
+        return;
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+
+    switch (type) {
+        case 'user':
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="message-prefix">You:</span>
+                    <span class="message-text">${text}</span>
+                </div>`;
+            break;
+
+        case 'assistant':
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <span class="message-prefix">🐿️ Nutsy:</span>
+                    <span class="message-text">${text}</span>
+                </div>`;
+            break;
+
+        case 'interim':
+            messageDiv.id = 'interimMessage';
+            messageDiv.innerHTML = `
+                <div class="message-content interim">
+                    <span class="message-prefix">(Listening...)</span>
+                    <span class="message-text">${text}</span>
+                </div>`;
+            break;
+
+        default:
+            console.error('Unknown message type:', type);
+            return;
+    }
+
+    // Remove interim message if adding a non-interim message
+    if (type !== 'interim') {
+        const existingInterim = document.getElementById('interimMessage');
+        if (existingInterim) {
+            existingInterim.remove();
+        }
+    }
+
+    chatHistory.appendChild(messageDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll to the bottom
+    console.log(`Appended ${type} message:`, text); // Debug log
+}
+
+  voiceButton.addEventListener('click', toggleRecording);
 });
