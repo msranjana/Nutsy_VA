@@ -15,16 +15,20 @@ SKILL_FUNCTION_DECLARATIONS = [
     }
 ]
 
+import os
 import requests
 
 def get_current_weather(city, country=None):
-    # Use your actual OpenWeatherMap API key here
-    API_KEY = "898ae0941aeea4b30cd77353a9b5b34d"
+    # Load the API key from the environment
+    WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+    if not WEATHER_API_KEY:
+        return {"success": False, "error": "Weather API key is missing. Please set WEATHER_API_KEY in the environment."}
+
     location = city if not country else f"{city},{country}"
     url = f"https://api.openweathermap.org/data/2.5/weather"
     params = {
         "q": location,
-        "appid": API_KEY,
+        "appid": WEATHER_API_KEY,
         "units": "metric"
     }
     try:
