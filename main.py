@@ -1,5 +1,5 @@
-#AI Voice Agent Backend
-# --- IMPORTS AND SETUP ---
+# AI Voice Agent Backend - Updated for Stable Audible Murf TTS Streaming
+
 from fastapi import FastAPI, UploadFile, File, Request, Path, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,11 +33,9 @@ from skills import SKILL_FUNCTION_DECLARATIONS, get_current_weather
 from google.generativeai.types import Tool, FunctionDeclaration
 import uuid
 
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 # Load API keys
 load_dotenv()
@@ -70,52 +68,25 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-
-# Configure APIs and log status
-if ASSEMBLY_KEY:
-    aai.settings.api_key = ASSEMBLY_KEY
-    logger.info("✅ AssemblyAI API key loaded.")
-else:
-    logger.warning("❌ ASSEMBLYAI_API_KEY missing - speech recognition will fail.")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash', system_instruction=SYSTEM_PROMPT)
-        logger.info("✅ Gemini model initialized with personality.")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
-        model = None
-else:
-    logger.warning("❌ GEMINI_API_KEY missing - AI responses will fail.")
-    model = None
-
-
-if MURF_KEY:
-    logger.info("✅ Murf API key loaded successfully.")
-else:
-    logger.warning("❌ MURF_API_KEY missing - voice synthesis will fail.")
-
-
 # In-memory datastore for chat history
 chat_histories: Dict[str, List[Dict[str, Any]]] = {}
 
 # Initialize database
 db = ChatDatabase()
 
-
 # Pre-generated fallback audio
 FALLBACK_AUDIO_PATH = "static/fallback.mp3"
 if not os.path.exists(FALLBACK_AUDIO_PATH):
-    logger.warning(f" Fallback audio file not found at {FALLBACK_AUDIO_PATH}")
+    logger.warning(f"Fallback audio file not found at {FALLBACK_AUDIO_PATH}")
 
+# Constants
+STATIC_MURF_CONTEXT = "voice_agent_static_context"  # Static context ID for requests
 
-# --- Murf WebSocket TTS function ---
-STATIC_MURF_CONTEXT = "voice_agent_static_context"  # Static context ID for all requests
-
-# --- Murf WebSocket TTS function (updated to stream to client) ---
+# Updated Murf WebSocket TTS function with buffering and completion signaling
 async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, context_id: str = STATIC_MURF_CONTEXT) -> None:
     """
-    Send streaming text chunks to Murf WebSocket and forward base64 audio chunks over FastAPI websocket.
+    Send text chunks to Murf WebSocket TTS, buffer all audio chunks,
+    and send them downstream to client without immediate playback (facilitate frontend full audio assembly).
     """
     if not MURF_KEY:
         logger.error("MURF_API_KEY not set, cannot connect to Murf WebSocket")
@@ -124,9 +95,8 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
     try:
         ws_url = f"wss://api.murf.ai/v1/speech/stream-input?api-key={MURF_KEY}&sample_rate=44100&channel_type=MONO&format=WAV"
         logger.info("Connecting to Murf WebSocket for TTS...")
-        
+
         async with websockets.connect(ws_url) as ws:
-            # voice config
             voice_config_msg = {
                 "voice_config": {
                     "voiceId": "en-US-amara",
@@ -135,20 +105,20 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
                     "pitch": 0,
                     "variation": 1
                 },
-                "context_id": STATIC_MURF_CONTEXT
+                "context_id": context_id
             }
             await ws.send(json.dumps(voice_config_msg))
 
-            # text chunk message
             text_msg = {
                 "text": "".join(text_chunks),
-                "context_id": STATIC_MURF_CONTEXT,
+                "context_id": context_id,
                 "end": True
             }
             await ws.send(json.dumps(text_msg))
-            
+
             audio_chunks_received = 0
-            total_base64_chars = 0  # Track total characters
+            total_base64_chars = 0
+            audio_chunk_list = []
 
             while True:
                 try:
@@ -158,53 +128,53 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
                     if "audio" in data:
                         audio_chunks_received += 1
                         base64_audio = data["audio"]
-                        total_base64_chars += len(base64_audio)  # Add to total
-                        
-                        await websocket.send_json({
-                            "type": "audio_chunk",
-                            "chunk_index": audio_chunks_received,
-                            "base64_audio": base64_audio
-                        })
-                        logger.info(f"📤 Sent audio chunk #{audio_chunks_received} to client ({len(base64_audio)} chars)")
+                        total_base64_chars += len(base64_audio)
+                        audio_chunk_list.append(base64_audio)
+
+                        # Stream chunk to client for progressive playback or just buffer:
+                        # Comment the next block if frontend plays only after accumulating full audio
+                        # await websocket.send_json({
+                        #     "type": "audio_chunk",
+                        #     "chunk_index": audio_chunks_received,
+                        #     "base64_audio": base64_audio
+                        # })
+                        # logger.info(f"Sent audio chunk #{audio_chunks_received} to client ({len(base64_audio)} chars)")
 
                     if data.get("final"):
-                        # Send stream complete message
+                        # Send all buffered chunks at once to frontend:
                         await websocket.send_json({
                             "type": "audio_stream_complete",
                             "total_chunks": audio_chunks_received
                         })
-                        logger.info("✅ Sent audio_stream_complete")
+                        logger.info("Sent audio_stream_complete")
 
-                        # Send final audio complete message with stats
                         await websocket.send_json({
                             "type": "audio_complete",
                             "total_chunks": audio_chunks_received,
                             "total_base64_chars": total_base64_chars,
                             "accumulated_chunks": audio_chunks_received,
-                            "audio_format": "WAV"
+                            "audio_format": "WAV",
+                            "all_chunks": audio_chunk_list  # Sending full buffered audio to frontend for smooth playback
                         })
-                        logger.info("✅ Sent audio_complete for frontend compatibility")
+                        logger.info("Sent audio_complete with full WAV chunks for frontend assembly")
                         break
-
                 except websockets.exceptions.ConnectionClosed:
-                    logger.info("🔌 Murf WebSocket connection closed")
+                    logger.info("Murf WebSocket connection closed")
                     break
-                except Exception as chunk_error:
-                    logger.error(f"❌ Error processing Murf response: {chunk_error}")
+                except Exception as chunk_err:
+                    logger.error(f"Error processing Murf response: {chunk_err}")
                     break
-
     except Exception as e:
-        logger.error(f"❌ Error in Murf WebSocket TTS: {e}")
+        logger.error(f"Error in Murf WebSocket TTS: {e}")
 
-
-# --- Stream LLM response and send to Murf WebSocket TTS ---
+# Updated LLM streaming function with unchanged logic except for TTS streaming call
 async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, websocket: WebSocket) -> str:
     try:
-        # Save user message to database
+        genai.configure(api_key=GEMINI_API_KEY)
+
         db.add_message(session_id, "user", user_text)
-        
         history = chat_histories.get(session_id, [])
-        
+
         tools = [Tool(function_declarations=[
             FunctionDeclaration(
                 name=decl['name'],
@@ -244,19 +214,16 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
             final_text = response.text or "Sorry, no answer."
             text_chunks = [final_text]
 
-        # Send assistant_message to frontend
         await websocket.send_json({
             "type": "assistant_message",
-            "text": final_text,
-            #"transcript": user_text
+            "text": final_text
         })
-        logger.info(f"✅ Sent assistant_message to frontend: {final_text}")
+        logger.info(f"Sent assistant_message to frontend: {final_text}")
 
-        # Save to database
         db.add_message(session_id, "assistant", final_text)
         chat_histories[session_id] = chat.history
 
-        # Stream TTS audio if available
+        # Call updated TTS to buffer all chunks for frontend full audio assembly and playback
         if text_chunks and MURF_KEY:
             await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
 
@@ -265,6 +232,9 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
     except Exception as e:
         logger.error(f"Error in streaming LLM response with Murf TTS: {e}")
         return f"Sorry, I'm having trouble processing that right now. {str(e)}"
+
+
+# Rest of your existing code unchanged: create_handlers, websocket_endpoint, health check, UI routing, chat history API...
 
 
 # Update the handler definitions

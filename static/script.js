@@ -59,11 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = JSON.parse(event.data);
         console.log('WebSocket message received:', data); // Debug log
 
-        // Log the unique ID of the message
-        if (data.id) {
-            console.log(`Message ID: ${data.id}`);
-        }
-
         // Handle user transcript
         if (data.type === 'transcript' && data.transcript) {
             if (data.end_of_turn) {
@@ -94,6 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Audio stream complete:', data); // Debug log
         }
 
+        // Handle full audio assembly
+        if (data.type === 'audio_complete' && data.all_chunks) {
+            console.log('Received all audio chunks for assembly'); // Debug log
+            await assembleAndPlayCompleteAudio(data.all_chunks);
+        }
     } catch (e) {
         console.error('Error processing WebSocket message:', e);
     }
@@ -269,23 +269,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function assembleAndPlayCompleteAudio(audioChunks) {
     try {
-      if (isPlayingAudio) stopAudioPlayback();
-      await playCombinedWavChunks(audioChunks);
-    } catch (error) {
-      statusMessage.textContent = '❌ Audio assembly failed - trying fallback...';
-      try {
-        if (audioChunks.length > 0) {
-          const fallbackBuffer = await base64ToAudioBuffer(audioChunks, 'EMERGENCY_FALLBACK');
-          await playAssembledAudio(fallbackBuffer);
+        if (isPlayingAudio) stopAudioPlayback();
+
+        // Combine all base64 chunks into a single WAV file
+        const pcmData = [];
+        const SAMPLE_RATE = 44100;
+        const NUM_CHANNELS = 1;
+        const BIT_DEPTH = 16;
+
+        for (let i = 0; i < audioChunks.length; i++) {
+            const bytes = base64ToUint8Array(audioChunks[i]);
+            if (i === 0) {
+                // Check for WAV header in the first chunk
+                const wavHeader = String.fromCharCode(...bytes.slice(0, 12));
+                if (wavHeader.startsWith('RIFF') && wavHeader.includes('WAVE')) {
+                    pcmData.push(bytes.slice(44)); // Skip the WAV header
+                } else {
+                    pcmData.push(bytes);
+                }
+            } else {
+                pcmData.push(bytes);
+            }
         }
-      } catch {
-        statusMessage.textContent = '❌ Audio playback failed completely';
-        isPlayingAudio = false;
-        currentAudioSource = null;
-        setTimeout(() => {
-          statusMessage.textContent = '🎬 Press the mic button to try again';
-        }, 3000);
-      }
+
+        // Combine all PCM data into a single Uint8Array
+        const totalPcmLength = pcmData.reduce((sum, chunk) => sum + chunk.length, 0);
+        const combinedPcm = new Uint8Array(totalPcmLength);
+        let offset = 0;
+        for (const chunk of pcmData) {
+            combinedPcm.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        // Create a new WAV header for the combined PCM data
+        const wavHeader = createWavHeader(combinedPcm.length, SAMPLE_RATE, NUM_CHANNELS, BIT_DEPTH);
+        const finalWav = new Uint8Array(wavHeader.length + combinedPcm.length);
+        finalWav.set(wavHeader, 0);
+        finalWav.set(combinedPcm, wavHeader.length);
+
+        // Play the assembled WAV audio
+        const blob = new Blob([finalWav], { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(blob);
+        const audioPlayer = document.getElementById('audioPlayer');
+        if (!audioPlayer) throw new Error('Audio player element not found');
+        audioPlayer.src = audioUrl;
+        audioPlayer.style.display = 'none';
+        statusMessage.textContent = `🎵 Nutsy is speaking...`; // Changed
+        statusMessage.classList.remove('processing', 'turn-complete', 'partial');
+        statusMessage.classList.add('speaking');
+
+        audioPlayer.onended = () => {
+            isPlayingAudio = false;
+            URL.revokeObjectURL(audioUrl);
+            setTimeout(() => {
+                statusMessage.textContent = '🎙️ Press the mic button to speak to Nutsy!';
+                statusMessage.classList.remove('speaking', 'processing');
+            }, 500);
+        };
+
+        audioPlayer.onerror = () => {
+            statusMessage.textContent = '❌ Audio playback failed';
+            statusMessage.classList.remove('speaking', 'processing');
+        };
+
+        audioPlayer.play();
+    } catch (error) {
+        console.error('Error assembling and playing audio:', error);
+        statusMessage.textContent = '❌ Audio assembly failed';
     }
   }
 
@@ -406,11 +456,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const byteRate = sampleRate * blockAlign;
     const buffer = new ArrayBuffer(44);
     const view = new DataView(buffer);
+
     function writeStr(offset, str) {
-      for (let i = 0; i < str.length; i++) {
-        view.setUint8(offset + i, str.charCodeAt(i));
-      }
+        for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+        }
     }
+
     writeStr(0, 'RIFF');
     view.setUint32(4, 36 + dataLength, true);
     writeStr(8, 'WAVE');
@@ -424,8 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
     view.setUint16(34, bitDepth, true);
     writeStr(36, 'data');
     view.setUint32(40, dataLength, true);
+
     return new Uint8Array(buffer);
-  }
+}
 
   function appendMessage(type, text) {
     const chatHistory = document.getElementById('chatHistory');
