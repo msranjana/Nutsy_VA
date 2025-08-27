@@ -31,6 +31,7 @@ from concurrent.futures import ThreadPoolExecutor
 from database import ChatDatabase
 from skills import SKILL_FUNCTION_DECLARATIONS, get_current_weather
 from google.generativeai.types import Tool, FunctionDeclaration
+import uuid
 
 
 # Configure logging
@@ -247,7 +248,7 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         await websocket.send_json({
             "type": "assistant_message",
             "text": final_text,
-            "transcript": user_text
+            #"transcript": user_text
         })
         logger.info(f"✅ Sent assistant_message to frontend: {final_text}")
 
@@ -347,23 +348,41 @@ async def websocket_endpoint(websocket: WebSocket):
 
         async def process_transcripts():
             try:
+                last_transcript = None  # Track the last transcript to prevent duplicates
                 while True:
                     transcript_data = await transcript_queue.get()
-                    await websocket_ref.send_json({
-                        "type": "transcript",
-                        "transcript": transcript_data["transcript"],
-                        "end_of_turn": transcript_data.get("end_of_turn", False),
-                        "confidence": transcript_data.get("confidence", 0.0)
-                    })
+                    normalized_transcript = transcript_data["transcript"].strip().lower()  # Normalize transcript for comparison
 
                     if transcript_data.get("end_of_turn", False):
-                        user_text = transcript_data["transcript"]
-                        # Pass websocket_ref to the function
-                        llm_text = await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
+                        # Prevent duplicate final messages
+                        if normalized_transcript != last_transcript:
+                            last_transcript = normalized_transcript
+                            msg_id = str(uuid.uuid4())  # Generate unique ID
+                            await websocket_ref.send_json({
+                                "type": "transcript",
+                                "id": msg_id,  # Add unique ID
+                                "transcript": transcript_data["transcript"],  # Send original transcript
+                                "end_of_turn": transcript_data.get("end_of_turn", False),
+                                "confidence": transcript_data.get("confidence", 0.0)
+                            })
+                            user_text = transcript_data["transcript"]
+                            llm_text = await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
+                            msg_id = str(uuid.uuid4())  # Generate unique ID for assistant message
+                            await websocket_ref.send_json({
+                                "type": "assistant_message",
+                                "id": msg_id,  # Add unique ID
+                                "text": llm_text  # Remove transcript from llm_response
+                            })
+                            logger.info(f"Sent assistant_message {msg_id}: {llm_text}")
+                    else:
+                        # Handle interim transcripts (if needed)
+                        msg_id = str(uuid.uuid4())  # Generate unique ID
                         await websocket_ref.send_json({
-                            "type": "llm_response",
-                            "text": llm_text,
-                            "transcript": user_text
+                            "type": "transcript",
+                            "id": msg_id,  # Add unique ID
+                            "transcript": transcript_data["transcript"],
+                            "end_of_turn": transcript_data.get("end_of_turn", False),
+                            "confidence": transcript_data.get("confidence", 0.0)
                         })
             except asyncio.CancelledError:
                 pass

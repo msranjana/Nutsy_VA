@@ -59,14 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = JSON.parse(event.data);
         console.log('WebSocket message received:', data); // Debug log
 
+        // Log the unique ID of the message
+        if (data.id) {
+            console.log(`Message ID: ${data.id}`);
+        }
+
         // Handle user transcript
         if (data.type === 'transcript' && data.transcript) {
             if (data.end_of_turn) {
-                console.log('Appending user message:', data.transcript); // Debug log
-                appendMessage('user', data.transcript);
-            } else {
-                console.log('Updating interim message:', data.transcript); // Debug log
-                //appendMessage('interim', data.transcript);
+                const lastUserMessage = document.querySelector('.user-message:last-child')?.textContent.trim();
+                const newMsg = data.transcript.trim();
+                if (lastUserMessage && newMsg.startsWith(lastUserMessage)) {
+                    console.log("Skipping duplicate or overlapping user message");
+                } else {
+                    appendMessage('user', newMsg);
+                }
             }
         }
 
