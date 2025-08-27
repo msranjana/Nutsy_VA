@@ -35,6 +35,19 @@ def get_current_weather(city, country=None):
             temp = data["main"]["temp"]
             feels_like = data["main"]["feels_like"]
             humidity = data["main"]["humidity"]
+
+            # Add a custom suggestion based on the weather
+            if "rain" in weather.lower():
+                suggestion = f"It's rainy in {city}. Don't forget your umbrella! 🌧️ Maybe enjoy a cozy day indoors with a book."
+            elif "clear" in weather.lower():
+                suggestion = f"It's a sunny day in {city}! Perfect for a walk or a picnic. ☀️ Don't forget your sunglasses!"
+            elif "cloud" in weather.lower():
+                suggestion = f"It's cloudy in {city}. A great day to grab a warm drink and explore the city. ☁️"
+            elif "snow" in weather.lower():
+                suggestion = f"It's snowing in {city}! Stay warm and maybe build a snowman. ❄️"
+            else:
+                suggestion = f"The weather in {city} is {weather}. Have a great day, no matter the weather! 🌈"
+
             return {
                 "success": True,
                 "city": city,
@@ -42,7 +55,8 @@ def get_current_weather(city, country=None):
                 "weather": weather,
                 "temp": temp,
                 "feels_like": feels_like,
-                "humidity": humidity
+                "humidity": humidity,
+                "suggestion": suggestion
             }
         else:
             return {"success": False, "error": f"API error: {response.status_code} - {response.text}"}

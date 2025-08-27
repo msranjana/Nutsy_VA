@@ -201,7 +201,8 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
                             final_text = (
                                 f"The current weather in {weather_result['city']} is {weather_result['weather']} "
                                 f"with a temperature of {weather_result['temp']}°C (feels like {weather_result['feels_like']}°C) "
-                                f"and humidity of {weather_result['humidity']}%."
+                                f"and humidity of {weather_result['humidity']}%. "
+                                f"{weather_result['suggestion']}"
                             )
                         else:
                             final_text = weather_result.get("error", "Sorry, I couldn't fetch the weather.")
