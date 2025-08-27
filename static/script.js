@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appendMessage('user', data.transcript);
             } else {
                 console.log('Updating interim message:', data.transcript); // Debug log
-                appendMessage('interim', data.transcript);
+                //appendMessage('interim', data.transcript);
             }
         }
 
