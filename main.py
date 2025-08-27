@@ -348,30 +348,45 @@ async def websocket_endpoint(websocket: WebSocket):
 
         async def process_transcripts():
             try:
-                last_transcript = None  # Track the last transcript to prevent duplicates
+                last_transcript = None
+                recent_transcripts = set()  # store recent unique messages
+
                 while True:
                     transcript_data = await transcript_queue.get()
 
-                    # Check if this is the final transcript
                     if transcript_data.get("end_of_turn", False):
-                        normalized_transcript = transcript_data["transcript"].strip().lower()  # Normalize transcript for comparison
+                        # ✅ Normalize text: lower, strip, remove trailing punctuation
+                        normalized_transcript = transcript_data["transcript"].strip().lower().rstrip(".,!?")
 
-                        # Prevent duplicate final messages
-                        if normalized_transcript != last_transcript:
-                            last_transcript = normalized_transcript
-                            await websocket_ref.send_json({
-                                "type": "transcript",
-                                "transcript": transcript_data["transcript"],  # Send original transcript
-                                "end_of_turn": True,  # Explicitly mark as final
-                                "confidence": transcript_data.get("confidence", 0.0)
-                            })
+                        # ✅ Prevent duplicates (both immediate & recent ones)
+                        if not normalized_transcript or normalized_transcript == last_transcript or normalized_transcript in recent_transcripts:
+                            logger.info(f"⏩ Skipping duplicate final transcript: {transcript_data['transcript']}")
+                            continue
 
-                            # Process the final transcript with chat logic
-                            user_text = transcript_data["transcript"]
-                            await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
+                        # Update memory
+                        last_transcript = normalized_transcript
+                        recent_transcripts.add(normalized_transcript)
+
+                        # Keep memory small (avoid unbounded growth)
+                        if len(recent_transcripts) > 10:
+                            recent_transcripts.pop()
+
+                        # ✅ Send unique transcript to frontend
+                        await websocket_ref.send_json({
+                            "type": "transcript",
+                            "transcript": transcript_data["transcript"],
+                            "end_of_turn": True,
+                            "confidence": transcript_data.get("confidence", 0.0)
+                        })
+
+                        # ✅ Pass to LLM only once
+                        user_text = transcript_data["transcript"]
+                        await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
+
                     else:
                         # Skip interim transcripts for chat logic
                         logger.info(f"Skipping interim transcript: {transcript_data['transcript']}")
+
             except asyncio.CancelledError:
                 pass
             except Exception as e:
