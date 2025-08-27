@@ -351,39 +351,27 @@ async def websocket_endpoint(websocket: WebSocket):
                 last_transcript = None  # Track the last transcript to prevent duplicates
                 while True:
                     transcript_data = await transcript_queue.get()
-                    normalized_transcript = transcript_data["transcript"].strip().lower()  # Normalize transcript for comparison
 
+                    # Check if this is the final transcript
                     if transcript_data.get("end_of_turn", False):
+                        normalized_transcript = transcript_data["transcript"].strip().lower()  # Normalize transcript for comparison
+
                         # Prevent duplicate final messages
                         if normalized_transcript != last_transcript:
                             last_transcript = normalized_transcript
-                            msg_id = str(uuid.uuid4())  # Generate unique ID
                             await websocket_ref.send_json({
                                 "type": "transcript",
-                                "id": msg_id,  # Add unique ID
                                 "transcript": transcript_data["transcript"],  # Send original transcript
-                                "end_of_turn": transcript_data.get("end_of_turn", False),
+                                "end_of_turn": True,  # Explicitly mark as final
                                 "confidence": transcript_data.get("confidence", 0.0)
                             })
+
+                            # Process the final transcript with chat logic
                             user_text = transcript_data["transcript"]
-                            llm_text = await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
-                            msg_id = str(uuid.uuid4())  # Generate unique ID for assistant message
-                            await websocket_ref.send_json({
-                                "type": "assistant_message",
-                                "id": msg_id,  # Add unique ID
-                                "text": llm_text  # Remove transcript from llm_response
-                            })
-                            logger.info(f"Sent assistant_message {msg_id}: {llm_text}")
+                            await stream_llm_response_with_murf_tts(user_text, session_id, websocket_ref)
                     else:
-                        # Handle interim transcripts (if needed)
-                        msg_id = str(uuid.uuid4())  # Generate unique ID
-                        await websocket_ref.send_json({
-                            "type": "transcript",
-                            "id": msg_id,  # Add unique ID
-                            "transcript": transcript_data["transcript"],
-                            "end_of_turn": transcript_data.get("end_of_turn", False),
-                            "confidence": transcript_data.get("confidence", 0.0)
-                        })
+                        # Skip interim transcripts for chat logic
+                        logger.info(f"Skipping interim transcript: {transcript_data['transcript']}")
             except asyncio.CancelledError:
                 pass
             except Exception as e:
