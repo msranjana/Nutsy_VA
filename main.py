@@ -29,6 +29,8 @@ import threading
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from database import ChatDatabase
+from skills import SKILL_FUNCTION_DECLARATIONS, get_current_weather
+from google.generativeai.types import Tool, FunctionDeclaration
 
 
 # Configure logging
@@ -77,7 +79,7 @@ else:
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
+        model = genai.GenerativeModel('gemini-2.0-flash', system_instruction=SYSTEM_PROMPT)
         logger.info("✅ Gemini model initialized with personality.")
     except Exception as e:
         logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
@@ -201,53 +203,63 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
         db.add_message(session_id, "user", user_text)
         
         history = chat_histories.get(session_id, [])
+        
+        tools = [Tool(function_declarations=[
+            FunctionDeclaration(
+                name=decl['name'],
+                description=decl['description'],
+                parameters=decl['parameters']
+            ) for decl in SKILL_FUNCTION_DECLARATIONS
+        ])]
         model = genai.GenerativeModel(
-            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             system_instruction=SYSTEM_PROMPT
         )
         chat = model.start_chat(history=history)
-        
-       
-        accumulated_response = ""
+        response = chat.send_message(user_text, tools=tools)
+        handled_by_function = False
         text_chunks = []
-        response_stream = chat.send_message(user_text, stream=True)
-        
-        for chunk in response_stream:
-            if chunk.text:
-                print(chunk.text, end="", flush=True)
-                accumulated_response += chunk.text
-                text_chunks.append(chunk.text)
-        
-        # Debug print full LLM response
-        print("\n" + "=" * 60)
-        print(f"✅ LLM RESPONSE:")
-        print(f"Full response: '{accumulated_response.strip()}'")
-        print(f"API URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash")
-        print("=" * 60)
-        
-        # Get full response text 
-        full_response = "".join(text_chunks)
-        
-       # 👉 NEW: Send assistant text to frontend immediately
-        try:
-            await websocket.send_json({
-                "type": "assistant_message",
-                "text": full_response.strip(),
-                "transcript": user_text
-            })
-            logger.info(f"✅ Sent assistant_message to frontend: {full_response.strip()}")
-        except Exception as e:
-            logger.error(f"Error sending assistant_message: {e}")
-        
-        # THEN: Save to database and update history
-        db.add_message(session_id, "assistant", full_response)
+
+        if response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'function_call') and part.function_call:
+                    fc = part.function_call
+                    if fc.name == "get_current_weather":
+                        weather_result = get_current_weather(**fc.args)
+                        if weather_result.get("success"):
+                            final_text = (
+                                f"The current weather in {weather_result['city']} is {weather_result['weather']} "
+                                f"with a temperature of {weather_result['temp']}°C (feels like {weather_result['feels_like']}°C) "
+                                f"and humidity of {weather_result['humidity']}%."
+                            )
+                        else:
+                            final_text = weather_result.get("error", "Sorry, I couldn't fetch the weather.")
+                        text_chunks = [final_text]
+                        handled_by_function = True
+                        break
+                elif part.text and not handled_by_function:
+                    text_chunks.append(part.text)
+        if not handled_by_function:
+            final_text = response.text or "Sorry, no answer."
+            text_chunks = [final_text]
+
+        # Send assistant_message to frontend
+        await websocket.send_json({
+            "type": "assistant_message",
+            "text": final_text,
+            "transcript": user_text
+        })
+        logger.info(f"✅ Sent assistant_message to frontend: {final_text}")
+
+        # Save to database
+        db.add_message(session_id, "assistant", final_text)
         chat_histories[session_id] = chat.history
 
-        # FINALLY: Start TTS streaming if available
+        # Stream TTS audio if available
         if text_chunks and MURF_KEY:
             await murf_websocket_tts_to_client(text_chunks, websocket, STATIC_MURF_CONTEXT)
-        
-        return full_response.strip()
+
+        return final_text
 
     except Exception as e:
         logger.error(f"Error in streaming LLM response with Murf TTS: {e}")
