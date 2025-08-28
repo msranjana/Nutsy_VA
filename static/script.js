@@ -480,6 +480,16 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Uint8Array(buffer);
 }
 
+  // Function to detect URLs and make them clickable
+function formatMessageText(text) {
+    // Regular expression to detect URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    // Replace URLs with clickable links
+    return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+}
+
   function appendMessage(type, text) {
     const chatHistory = document.getElementById('chatHistory');
     if (!chatHistory) {
@@ -490,12 +500,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}-message`;
 
+    const formattedText = formatMessageText(text); // ✅ apply formatting
+
     switch (type) {
         case 'user':
             messageDiv.innerHTML = `
                 <div class="message-content">
                     <span class="message-prefix">You:</span>
-                    <span class="message-text">${text}</span>
+                    <span class="message-text">${formattedText}</span>
                 </div>`;
             break;
 
@@ -503,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.innerHTML = `
                 <div class="message-content">
                     <span class="message-prefix">🐿️ Nutsy:</span>
-                    <span class="message-text">${text}</span>
+                    <span class="message-text">${formattedText}</span>
                 </div>`;
             break;
 
@@ -512,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messageDiv.innerHTML = `
                 <div class="message-content interim">
                     <span class="message-prefix">(Listening...)</span>
-                    <span class="message-text">${text}</span>
+                    <span class="message-text">${formattedText}</span>
                 </div>`;
             break;
 

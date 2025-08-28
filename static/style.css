@@ -96,13 +96,26 @@ h1 {
 }
 
 .message-prefix {
-    font-weight: 600;
-    font-size: 0.9em;
-    opacity: 0.8;
+    font-weight: 700; /* Make it bold */
+    font-size: 1.1em; /* Increase font size */
+    text-transform: uppercase; /* Make the text uppercase */
+    letter-spacing: 0.5px; /* Add slight spacing for better readability */
 }
 
 .message-text {
     line-height: 1.4;
+}
+
+/* Style for clickable links */
+.message a {
+    color: #5e4ade; /* Green color for links */
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.message a:hover {
+    color: #1373d3; /* Lighter green on hover */
 }
 
 /* Chat history styling */
