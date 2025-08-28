@@ -68,10 +68,11 @@ h1 {
 }
 
 .user-message {
-    background: #4158D0;
-    color: white;
-    margin-left: auto;
-    border-radius: 16px 16px 4px 16px;
+    background: rgba(255, 255, 255, 0.1); /* Match assistant message background */
+    border-left: 4px solid #6d99ff; /* Match assistant message border color */
+    margin-left: auto; /* Align like assistant messages */
+    border-radius: 16px 16px 16px 4px; /* Match assistant message border radius */
+    color: white; /* Ensure text color matches */
 }
 
 .assistant-message {
