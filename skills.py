@@ -17,6 +17,24 @@ SKILL_FUNCTION_DECLARATIONS = [
 
 import os
 import requests
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Add Tavily skill to the skill declarations
+SKILL_FUNCTION_DECLARATIONS.append({
+    "name": "get_real_time_answer",
+    "description": "Fetch real-time answers from the Tavily API for a given query.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "The user's query to fetch real-time answers."}
+        },
+        "required": ["query"]
+    }
+})
 
 def get_current_weather(city, country=None):
     # Load the API key from the environment
@@ -66,4 +84,54 @@ def get_current_weather(city, country=None):
             return {"success": False, "error": f"API error: {response.status_code} - {response.text}"}
     except Exception as e:
         return {"success": False, "error": f"Exception occurred: {str(e)}"}
-# --- END Weather skill support ---
+
+def get_real_time_answer(query):
+    """Fetch real-time answers from the Tavily API."""
+    TAVILY_API_KEY = os.getenv("TAVILY_KEY")
+    if not TAVILY_API_KEY:
+        return {
+            "success": False,
+            "error": "Tavily API key is missing. Please set TAVILY_KEY in the environment."
+        }
+
+    url = "https://api.tavily.com/search"
+    headers = {
+        "Authorization": f"Bearer {TAVILY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {"query": query}
+
+    logger.info(f"Sending POST request to Tavily API: {url}")
+    logger.info(f"Payload: {payload}")
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        logger.info(f"Response: {response.status_code} - {response.text}")
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Try to get the main answer
+            answer = data.get("answer")
+            source = "Unknown source"
+
+            # If no direct answer, try to extract from results
+            if not answer and data.get("results"):
+                top_result = data["results"][0]
+                answer = top_result.get("content", "No answer available.")
+                source = top_result.get("url", "Unknown source")
+
+            return {
+                "success": True,
+                "answer": answer or "No answer available.",
+                "source": source
+            }
+
+        else:
+            return {
+                "success": False,
+                "error": f"API error: {response.status_code} - {response.text}"
+            }
+
+    except Exception as e:
+        return {"success": False, "error": f"Exception occurred: {str(e)}"}

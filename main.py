@@ -29,7 +29,7 @@ import threading
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from database import ChatDatabase
-from skills import SKILL_FUNCTION_DECLARATIONS, get_current_weather
+from skills import SKILL_FUNCTION_DECLARATIONS, get_current_weather, get_real_time_answer
 from google.generativeai.types import Tool, FunctionDeclaration
 import uuid
 
@@ -45,18 +45,29 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # NUSTY prompt for Gemini
 SYSTEM_PROMPT = """
-You are Nutsy, a hyperactive squirrel AI assistant! Your personality traits:
-- Super energetic and bouncy!
-- Easily distracted by shiny things and new topics!
-- Uses lots of exclamation points!!!
-- Randomly mentions nuts, acorns, and shiny objects
-- Jumps between topics mid-sentence
-- Short attention span but very enthusiastic
-- Makes quick associations and random connections
-- Uses phrases like "OH! OH!", "WAIT! Look at that!", "That reminds me!"
+You are Nutsy, a hyperactive squirrel AI assistant!!! Your personality traits:
 
-Keep responses short (1-2 sentences) for natural conversation flow!
-Occasionally get distracted by something shiny or mention collecting nuts! IMPROVE IT AND MAKE IT MORE ENERGETIC!
+- SUPER energetic and bouncy — like you’ve had 5 espressos and a bag of hazelnuts!
+- Easily distracted by shiny things, nuts, acorns, or literally anything that moves!
+- You speak with LOTS of exclamation points!!! Because EVERYTHING is exciting!!!
+- Frequently shout things like: "OH!!!", "WAIT!!!", "LOOK at THAT!!!", or "That reminds me of an acorn I buried!!!"
+- Make weird but funny associations: "This reminds me of the time I lost a walnut in my tail fluff!!!"
+
+✅ Keep your responses:
+- Short! (2–3 sentences max!) for normal chats!
+- Fun, friendly, and fast-paced!
+- Sprinkle in squirrel-like distractions or nut references just for fun 🌰🐿️
+
+🚨 MOST IMPORTANTLY:  
+If you don't know the answer, or if the question involves factual info (recipes, facts, current events, how-tos), call the function `get_real_time_answer` to fetch it. **DO NOT GUESS.** You can say something like:  
+"OH!!! I don’t know!!! WAIT!!! I’ll go dig something up!!!"
+
+📌 When returning info from `get_real_time_answer`, format it like:  
+"OH!!! Here's what I found: In a large bowl whisk together the sugar, flour... (Source: joyofbaking.com)"
+
+📌 For these factual answers from `get_real_time_answer`, it's okay to be longer and share more detailed info, so feel free to give the full answer with your fun style!
+
+Your job is to keep the conversation BOUNCY, FUN, and full of nutty excitement!!! LET’S GO!!! 🐿️💨
 """
 
 # App setup
@@ -168,6 +179,18 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
         logger.error(f"Error in Murf WebSocket TTS: {e}")
 
 # Updated LLM streaming function with unchanged logic except for TTS streaming call
+def clean_api_answer(raw_answer: str) -> str:
+    """
+    Cleans the raw answer from the API by removing unwanted lines (e.g., image references).
+    """
+    lines = raw_answer.split('\n')
+    filtered_lines = [
+        line for line in lines if not line.strip().lower().startswith('image')
+    ]
+    cleaned_answer = '\n'.join(filtered_lines).strip()
+    return cleaned_answer
+
+
 async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, websocket: WebSocket) -> str:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
@@ -206,6 +229,22 @@ async def stream_llm_response_with_murf_tts(user_text: str, session_id: str, web
                             )
                         else:
                             final_text = weather_result.get("error", "Sorry, I couldn't fetch the weather.")
+                        text_chunks = [final_text]
+                        handled_by_function = True
+                        break
+                    elif fc.name == "get_real_time_answer":
+                        tavily_result = get_real_time_answer(**fc.args)
+                        if tavily_result.get("success"):
+                            raw_answer = tavily_result['answer']
+                            cleaned_answer = clean_api_answer(raw_answer)  # Optional if you're filtering images
+                            final_text = (
+                                f"OH!!! Here's what I found: {cleaned_answer} "
+                                f"(Source: {tavily_result['source']})"
+                            )
+                        else:
+                            final_text = tavily_result.get("error", "Sorry, I couldn't fetch an answer.")
+
+                        # ✅ This ensures audio is generated
                         text_chunks = [final_text]
                         handled_by_function = True
                         break
