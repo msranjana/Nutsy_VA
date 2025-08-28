@@ -334,3 +334,78 @@ h1 {
         transform: scale(1) translateY(0);
     }
 }
+
+/* --- Configuration Section Styling (New) --- */
+/* Style for the configuration section */
+.config-section {
+    position: fixed;
+    top: 5%;
+    left: 5%; /* Align to the left side of the margin */
+    background: rgba(255, 255, 255, 0.1); /* Match the chat container background */
+    backdrop-filter: blur(10px); /* Add a subtle blur effect */
+    border: 2px solid rgba(255, 255, 255, 0.2); /* Subtle border to match the UI */
+    border-radius: 16px; /* Rounded corners for consistency */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+    padding: 20px; /* Add padding inside the box */
+    width: 300px; /* Fixed width for consistency */
+    font-family: 'Inter', sans-serif; /* Match the existing font */
+    color: #ffffff; /* White text for readability */
+    z-index: 1000; /* Ensure it appears above other elements */
+}
+
+.config-section h2 {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #FFE66D; /* Match the assistant message border color */
+    text-align: center; /* Center the heading */
+}
+
+.config-section label {
+    display: block;
+    margin-top: 10px;
+    font-weight: 600; /* Slightly bold for emphasis */
+    color: rgba(255, 255, 255, 0.8); /* Subtle white for labels */
+}
+
+.config-section input {
+    width: 100%; /* Full width input fields */
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1em;
+    font-family: 'Inter', sans-serif;
+    background: rgba(255, 255, 255, 0.05); /* Match the chat history background */
+    color: #ffffff; /* White text for readability */
+    box-sizing: border-box; /* Ensure padding doesn't affect width */
+}
+
+.config-section input:focus {
+    border-color: #2a9d8f; /* Highlight border on focus */
+    outline: none; /* Remove default outline */
+    box-shadow: 0 0 5px rgba(42, 157, 143, 0.5); /* Add subtle glow */
+}
+
+.config-section button {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: #2a9d8f; /* Match the speak button background */
+    color: white; /* White text for contrast */
+    border: none;
+    border-radius: 8px; /* Rounded corners */
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.config-section button:hover {
+    background: #264653; /* Slightly darker green on hover */
+}
+
+.config-section p#error-message {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #ef4444; /* Red for error messages */
+    text-align: center; /* Center the error message */
+}

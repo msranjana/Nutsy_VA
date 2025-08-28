@@ -1,6 +1,6 @@
 # AI Voice Agent Backend - Updated for Stable Audible Murf TTS Streaming
 
-from fastapi import FastAPI, UploadFile, File, Request, Path, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Request, Path, WebSocket, WebSocketDisconnect, Form
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -32,6 +32,7 @@ from database import ChatDatabase
 from skills import SKILL_FUNCTION_DECLARATIONS, get_current_weather, get_real_time_answer
 from google.generativeai.types import Tool, FunctionDeclaration
 import uuid
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -475,5 +476,37 @@ async def get_chat_history(session_id: str):
     try:
         history = db.get_session_history(session_id)
         return {"status": "success", "history": history}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# Add endpoint to receive API keys from the frontend
+@app.post("/api/set-keys")
+async def set_api_keys(
+    assemblyai_key: str = Form(...),
+    gemini_key: str = Form(...),
+    murf_key: str = Form(...),
+    tavily_key: str = Form(...),
+    weather_key: str = Form(...)
+):
+    try:
+        # Validate that all keys are provided
+        if not all([assemblyai_key, gemini_key, murf_key, tavily_key, weather_key]):
+            return {"status": "error", "message": "All API keys must be provided."}
+
+        # Validate API key formats (basic validation for non-empty strings)
+        api_key_regex = r"^[a-zA-Z0-9-_]+$"  # Example regex for alphanumeric keys
+        for key in [assemblyai_key, gemini_key, murf_key, tavily_key, weather_key]:
+            if not re.match(api_key_regex, key):
+                return {"status": "error", "message": f"Invalid API key format: {key}"}
+
+        # Save keys to in-memory storage or database
+        global ASSEMBLY_KEY, GEMINI_API_KEY, MURF_KEY, TAVILY_KEY, WEATHER_API_KEY
+        ASSEMBLY_KEY = assemblyai_key or os.getenv("ASSEMBLYAI_API_KEY")
+        GEMINI_API_KEY = gemini_key or os.getenv("GEMINI_API_KEY")
+        MURF_KEY = murf_key or os.getenv("MURF_API_KEY")
+        TAVILY_KEY = tavily_key or os.getenv("TAVILY_KEY")
+        WEATHER_API_KEY = weather_key or os.getenv("WEATHER_API_KEY")
+
+        return {"status": "success", "message": "API keys updated successfully"}
     except Exception as e:
         return {"status": "error", "message": str(e)}

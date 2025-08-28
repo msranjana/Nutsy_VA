@@ -547,4 +547,59 @@ function formatMessageText(text) {
 }
 
   voiceButton.addEventListener('click', toggleRecording);
+
+    const saveApiKeysButton = document.getElementById('save-api-keys');
+
+    saveApiKeysButton.addEventListener('click', async () => {
+        const assemblyaiKey = document.getElementById('assemblyai-key').value.trim();
+        const geminiKey = document.getElementById('gemini-key').value.trim();
+        const murfKey = document.getElementById('murf-key').value.trim();
+        const tavilyKey = document.getElementById('tavily-key').value.trim();
+        const weatherKey = document.getElementById('weather-key').value.trim();
+
+        // Validate that all fields are filled
+        if (!assemblyaiKey || !geminiKey || !murfKey || !tavilyKey || !weatherKey) {
+            alert('All API keys must be filled in!');
+            return;
+        }
+
+        // Validate API key formats (basic validation for non-empty strings)
+        const apiKeyRegex = /^[a-zA-Z0-9-_]+$/; // Example regex for alphanumeric keys
+        if (
+            !apiKeyRegex.test(assemblyaiKey) ||
+            !apiKeyRegex.test(geminiKey) ||
+            !apiKeyRegex.test(murfKey) ||
+            !apiKeyRegex.test(tavilyKey) ||
+            !apiKeyRegex.test(weatherKey)
+        ) {
+            alert('One or more API keys are invalid. Please check their format.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/set-keys', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    assemblyai_key: assemblyaiKey,
+                    gemini_key: geminiKey,
+                    murf_key: murfKey,
+                    tavily_key: tavilyKey,
+                    weather_key: weatherKey,
+                }),
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                alert('API keys saved successfully!');
+            } else {
+                alert(`Error saving API keys: ${result.message}`);
+            }
+        } catch (error) {
+            console.error('Error saving API keys:', error);
+            alert('Failed to save API keys.');
+        }
+    });
 });

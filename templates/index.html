@@ -31,6 +31,28 @@
             </div>
         </div>
     </div>
+    <div id="config-section" class="config-section">
+        <h2>API Key Configuration</h2>
+        <form id="api-key-form">
+            <label for="assemblyai-key">AssemblyAI API Key:</label>
+            <input type="text" id="assemblyai-key" name="assemblyai-key" placeholder="Enter AssemblyAI API Key">
+
+            <label for="gemini-key">Gemini API Key:</label>
+            <input type="text" id="gemini-key" name="gemini-key" placeholder="Enter Gemini API Key">
+
+            <label for="murf-key">Murf API Key:</label>
+            <input type="text" id="murf-key" name="murf-key" placeholder="Enter Murf API Key">
+
+            <label for="tavily-key">Tavily API Key:</label>
+            <input type="text" id="tavily-key" name="tavily-key" placeholder="Enter Tavily API Key">
+
+            <label for="weather-key">Weather API Key:</label>
+            <input type="text" id="weather-key" name="weather-key" placeholder="Enter Weather API Key">
+
+            <button type="button" id="save-api-keys">Save API Keys</button>
+            <p id="error-message" style="color: red; display: none;">All fields are required and must be valid.</p>
+        </form>
+    </div>
     <audio id="audioPlayer" style="display:none" playsinline></audio>
     <script src="/static/script.js"></script>
 </body>
