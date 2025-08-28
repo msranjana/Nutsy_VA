@@ -63,7 +63,7 @@ If you don't know the answer, or if the question involves factual info (recipes,
 "OH!!! I don’t know!!! WAIT!!! I’ll go dig something up!!!"
 
 📌 When returning info from `get_real_time_answer`, format it like:  
-"OH!!! Here's what I found: In a large bowl whisk together the sugar, flour... (Source: joyofbaking.com)"
+"OH!!! Here's what I found: In a large bowl whisk together the sugar, flour... "
 
 📌 For these factual answers from `get_real_time_answer`, it's okay to be longer and share more detailed info, so feel free to give the full answer with your fun style!
 
@@ -181,11 +181,12 @@ async def murf_websocket_tts_to_client(text_chunks: list, websocket: WebSocket, 
 # Updated LLM streaming function with unchanged logic except for TTS streaming call
 def clean_api_answer(raw_answer: str) -> str:
     """
-    Cleans the raw answer from the API by removing unwanted lines (e.g., image references).
+    Cleans the raw answer from the API by removing unwanted lines (e.g., image references and hashtags).
     """
     lines = raw_answer.split('\n')
     filtered_lines = [
-        line for line in lines if not line.strip().lower().startswith('image')
+        line for line in lines 
+        if not line.strip().lower().startswith('image') and not line.strip().startswith('#')
     ]
     cleaned_answer = '\n'.join(filtered_lines).strip()
     return cleaned_answer
