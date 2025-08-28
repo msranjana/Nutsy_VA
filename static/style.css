@@ -20,14 +20,19 @@ body {
     color: #ffffff;
 }
 
+/* Container styling */
 .container {
     width: 100%;
-    max-width: 800px;
-    margin: 2rem;
+    max-width: 1200px; /* Increase max width for better alignment */
+    margin: 0 auto; /* Center horizontally */
     padding: 2rem;
+    display: flex; /* Use flexbox for layout */
+    gap: 2rem; /* Add spacing between config section and chat container */
+    align-items: flex-start; /* Align items to the top */
 }
 
 .chat-container {
+    flex: 1; /* Allow chat container to take remaining space */
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 16px;
@@ -338,33 +343,41 @@ h1 {
 /* --- Configuration Section Styling (New) --- */
 /* Style for the configuration section */
 .config-section {
-    position: fixed;
-    top: 5%;
-    left: 5%; /* Align to the left side of the margin */
-    background: rgba(255, 255, 255, 0.1); /* Match the chat container background */
-    backdrop-filter: blur(10px); /* Add a subtle blur effect */
-    border: 2px solid rgba(255, 255, 255, 0.2); /* Subtle border to match the UI */
-    border-radius: 16px; /* Rounded corners for consistency */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
-    padding: 20px; /* Add padding inside the box */
-    width: 300px; /* Fixed width for consistency */
+    width: 300px; /* Fixed width for the config section */
+    max-height: 90%; /* Limit height to prevent overflow */
+    overflow-y: auto; /* Enable scrolling if content exceeds height */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 20px;
     font-family: 'Inter', sans-serif; /* Match the existing font */
     color: #ffffff; /* White text for readability */
     z-index: 1000; /* Ensure it appears above other elements */
+    text-align: justify; /* Justify the text content */
 }
 
-.config-section h2 {
-    font-size: 1.5em;
+/* Style for the configuration note */
+.config-note {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.8); /* Subtle white for readability */
+    background: rgba(255, 255, 255, 0.05); /* Match the form background */
+    padding: 10px;
+    border-radius: 8px;
     margin-bottom: 15px;
-    color: #FFE66D; /* Match the assistant message border color */
-    text-align: center; /* Center the heading */
+    text-align: justify; /* Justify the note text */
+    line-height: 1.4;
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border for emphasis */
 }
 
+/* Style for labels */
 .config-section label {
     display: block;
     margin-top: 10px;
     font-weight: 600; /* Slightly bold for emphasis */
     color: rgba(255, 255, 255, 0.8); /* Subtle white for labels */
+    text-align: justify; /* Justify label text */
 }
 
 .config-section input {
@@ -408,4 +421,194 @@ h1 {
     font-size: 0.9em;
     color: #ef4444; /* Red for error messages */
     text-align: center; /* Center the error message */
+}
+
+/* Toggle button styling */
+.config-toggle {
+    position: fixed;
+    top: 5%;
+    left: 5%;
+    z-index: 1100;
+}
+
+.config-toggle button {
+    padding: 10px 15px;
+    background: #2a9d8f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.config-toggle button:hover {
+    background: #264653;
+}
+
+/* Scrollbar styling for the configuration section */
+.config-section::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+}
+
+.config-section::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1); /* Track background color */
+    border-radius: 4px; /* Rounded corners for the track */
+}
+
+.config-section::-webkit-scrollbar-thumb {
+    background: rgba(42, 157, 143, 0.8); /* Thumb color (green to match UI) */
+    border-radius: 4px; /* Rounded corners for the thumb */
+}
+
+.config-section::-webkit-scrollbar-thumb:hover {
+    background: rgba(42, 157, 143, 1); /* Darker green on hover */
+}
+
+/* Responsive styles for smaller screens */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 90%;
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .chat-container {
+        padding: 1.5rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    .subtitle {
+        font-size: 0.9rem;
+    }
+
+    .message {
+        font-size: 0.85rem;
+        padding: 10px;
+    }
+
+    .speak-button, .stop-button {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
+    }
+
+    .config-section {
+        width: 250px; /* Adjust width for smaller screens */
+        padding: 15px;
+    }
+
+    .config-section h2 {
+        font-size: 1.3em;
+    }
+
+    .config-section input {
+        padding: 8px;
+        font-size: 0.9em;
+    }
+
+    .config-section button {
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        max-width: 100%;
+        margin: 0.5rem;
+        padding: 1rem;
+    }
+
+    .chat-container {
+        padding: 1rem;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    .subtitle {
+        font-size: 0.8rem;
+    }
+
+    .message {
+        font-size: 0.8rem;
+        padding: 8px;
+    }
+
+    .speak-button, .stop-button {
+        padding: 0.6rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .config-section {
+        width: 220px; /* Further adjust width for smaller screens */
+        padding: 10px;
+    }
+
+    .config-section h2 {
+        font-size: 1.2em;
+    }
+
+    .config-section input {
+        padding: 6px;
+        font-size: 0.8em;
+    }
+
+    .config-section button {
+        padding: 6px 10px;
+        font-size: 0.8em;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        margin: 0;
+        padding: 0.5rem;
+    }
+
+    .chat-container {
+        padding: 0.5rem;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .subtitle {
+        font-size: 0.7rem;
+    }
+
+    .message {
+        font-size: 0.75rem;
+        padding: 6px;
+    }
+
+    .speak-button, .stop-button {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.75rem;
+    }
+
+    .config-section {
+        width: 200px; /* Narrower width for very small screens */
+        padding: 8px;
+    }
+
+    .config-section h2 {
+        font-size: 1.1em;
+    }
+
+    .config-section input {
+        padding: 5px;
+        font-size: 0.75em;
+    }
+
+    .config-section button {
+        padding: 5px 8px;
+        font-size: 0.75em;
+    }
 }

@@ -548,6 +548,19 @@ function formatMessageText(text) {
 
   voiceButton.addEventListener('click', toggleRecording);
 
+    const configSection = document.getElementById('config-section');
+    const toggleConfigButton = document.getElementById('toggle-config-button');
+
+    toggleConfigButton.addEventListener('click', () => {
+        if (configSection.style.display === 'none') {
+            configSection.style.display = 'block';
+            toggleConfigButton.textContent = 'Hide Config';
+        } else {
+            configSection.style.display = 'none';
+            toggleConfigButton.textContent = 'Open Config';
+        }
+    });
+
     const saveApiKeysButton = document.getElementById('save-api-keys');
 
     saveApiKeysButton.addEventListener('click', async () => {
