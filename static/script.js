@@ -550,16 +550,24 @@ function formatMessageText(text) {
 
     const configSection = document.getElementById('config-section');
     const toggleConfigButton = document.getElementById('toggle-config-button');
+    const closeButton = document.createElement('button');
 
     toggleConfigButton.addEventListener('click', () => {
-        if (configSection.style.display === 'none') {
-            configSection.style.display = 'block';
-            toggleConfigButton.textContent = 'Hide Config';
-        } else {
-            configSection.style.display = 'none';
-            toggleConfigButton.textContent = 'Open Config';
-        }
+        configSection.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
     });
+
+    closeButton.addEventListener('click', () => {
+        configSection.style.display = 'none';
+        document.body.style.overflow = 'auto'; // Restore scrolling
+    });
+
+    const closeModalButton = document.getElementById('close-modal');
+
+closeModalButton.addEventListener('click', () => {
+    configSection.style.display = 'none';
+    document.body.style.overflow = 'auto'; // Restore scrolling
+});
 
     const saveApiKeysButton = document.getElementById('save-api-keys');
 
@@ -615,4 +623,6 @@ function formatMessageText(text) {
             alert('Failed to save API keys.');
         }
     });
+
+// Media query styles should be in a CSS file
 });

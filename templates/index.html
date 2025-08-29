@@ -32,12 +32,12 @@
         </div>
     </div>
     <div id="config-toggle" class="config-toggle">
-        <button id="toggle-config-button">Open Config</button>
+        <button id="toggle-config-button" aria-label="Settings">
+            <i class="fas fa-cog"></i> <!-- Font Awesome settings icon -->
+        </button>
     </div>
     <div id="config-section" class="config-section" style="display: none;">
         <h2>API Key Configuration</h2>
-        <p class="config-note">
-            If you don't provide your own API keys, the default keys will be used.
         <form id="api-key-form">
             <label for="assemblyai-key">AssemblyAI API Key:</label>
             <input type="text" id="assemblyai-key" name="assemblyai-key" placeholder="Enter AssemblyAI API Key">
@@ -54,7 +54,10 @@
             <label for="weather-key">Weather API Key:</label>
             <input type="text" id="weather-key" name="weather-key" placeholder="Enter Weather API Key">
 
-            <button type="button" id="save-api-keys">Save API Keys</button>
+            <div class="button-container">
+                <button type="button" id="save-api-keys">Save API Keys</button>
+                <button type="button" id="close-modal">Close</button> <!-- Keep only this close button -->
+            </div>
             <p id="error-message" style="color: red; display: none;">All fields are required and must be valid.</p>
         </form>
     </div>

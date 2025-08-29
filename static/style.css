@@ -2,14 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
-
 /* Reset and base styles */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
-
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, #f4a261, #e76f51);
@@ -19,20 +17,18 @@ body {
     align-items: center;
     color: #ffffff;
 }
-
 /* Container styling */
 .container {
     width: 100%;
-    max-width: 1200px; /* Increase max width for better alignment */
-    margin: 0 auto; /* Center horizontally */
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 2rem;
-    display: flex; /* Use flexbox for layout */
-    gap: 2rem; /* Add spacing between config section and chat container */
-    align-items: flex-start; /* Align items to the top */
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
 }
-
 .chat-container {
-    flex: 1; /* Allow chat container to take remaining space */
+    flex: 1;
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     border-radius: 16px;
@@ -41,12 +37,10 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.2);
     animation: bounce 1s ease infinite;
 }
-
 header {
     text-align: center;
     margin-bottom: 2rem;
 }
-
 h1 {
     font-size: 2.5rem;
     font-weight: 700;
@@ -56,13 +50,11 @@ h1 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-
 .subtitle {
     color: rgba(255, 255, 255, 0.8);
     font-size: 1rem;
     line-height: 1.5;
 }
-
 /* Message styling */
 .message {
     margin: 8px;
@@ -71,59 +63,50 @@ h1 {
     max-width: 80%;
     animation: fadeIn 0.3s ease;
 }
-
 .user-message {
-    background: rgba(255, 255, 255, 0.1); /* Match assistant message background */
-    border-left: 4px solid #6d99ff; /* Match assistant message border color */
-    margin-left: auto; /* Align like assistant messages */
-    border-radius: 16px 16px 16px 4px; /* Match assistant message border radius */
-    color: white; /* Ensure text color matches */
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #6d99ff;
+    margin-left: auto;
+    border-radius: 16px 16px 16px 4px;
+    color: white;
 }
-
 .assistant-message {
     background: rgba(255, 255, 255, 0.1);
     border-left: 4px solid #FFE66D;
     margin-right: auto;
     border-radius: 16px 16px 16px 4px;
 }
-
 .interim-message {
     opacity: 0.7;
     font-style: italic;
     background: rgba(255, 255, 255, 0.05);
     border-left: 2px solid #4158D0;
 }
-
 .message-content {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
-
 .message-prefix {
-    font-weight: 700; /* Make it bold */
-    font-size: 1.1em; /* Increase font size */
-    text-transform: uppercase; /* Make the text uppercase */
-    letter-spacing: 0.5px; /* Add slight spacing for better readability */
+    font-weight: 700;
+    font-size: 1.1em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-
 .message-text {
     line-height: 1.4;
 }
-
-/* Style for clickable links */
+/* Clickable links */
 .message a {
-    color: #5e4ade; /* Green color for links */
+    color: #5e4ade;
     text-decoration: underline;
     font-weight: 500;
     transition: color 0.2s ease;
 }
-
 .message a:hover {
-    color: #1373d3; /* Lighter green on hover */
+    color: #1373d3;
 }
-
-/* Chat history styling */
+/* Chat history */
 .chat-history {
     max-height: 400px;
     overflow-y: auto;
@@ -136,14 +119,12 @@ h1 {
     flex-direction: column;
     gap: 0.5rem;
 }
-
 .control-panel {
     display: flex;
     gap: 1rem;
     justify-content: center;
     padding-top: 1rem;
 }
-
 .speak-button, .stop-button {
     padding: 1rem 2rem;
     border: none;
@@ -156,93 +137,77 @@ h1 {
     gap: 0.5rem;
     transition: all 0.2s ease;
 }
-
 .speak-button {
     background: #2a9d8f;
     animation: wiggle 2s ease-in-out infinite;
 }
-
 .speak-button:hover {
     background: #264653;
     transform: scale(1.05) rotate(-5deg);
 }
-
 .stop-button {
     background: #ef4444;
     color: white;
     opacity: 0.5;
 }
-
 .stop-button:enabled {
     opacity: 1;
 }
-
 .stop-button:enabled:hover {
     background: #dc2626;
 }
-
 /* Recording animation */
 .recording .speak-button {
     animation: pulse 2s infinite;
 }
-
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
-
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
 }
-
 @keyframes bounceIn {
     0% { opacity: 0; transform: scale(0.3); }
     50% { transform: scale(1.05); }
     70% { transform: scale(0.9); }
     100% { opacity: 1; transform: scale(1); }
 }
-
 @keyframes wiggle {
     0%, 100% { transform: rotate(-5deg); }
     50% { transform: rotate(5deg); }
 }
-
 /* Scrollbar styling */
 .chat-history::-webkit-scrollbar {
     width: 8px;
 }
-
 .chat-history::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
-
 .chat-history::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 4px;
 }
-
 .chat-history::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
 }
-
 /* --- Voice Agent Card Styling --- */
 .voice-button-container {
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 150px; /* Space for the button and ripples */
+    height: 150px;
 }
-
 .voice-button {
     width: 80px;
     height: 80px;
     border-radius: 50%;
     border: none;
-    background: #FF69B4; /* Hot pink, a key color from the image */
+    background: #FF69B4;
     color: white;
     font-size: 2rem;
     cursor: pointer;
@@ -251,12 +216,10 @@ h1 {
     position: relative;
     z-index: 10;
 }
-
 .voice-button:hover {
     background: #ff85c1;
     transform: scale(1.05);
 }
-
 /* Ripple animation for recording state */
 .voice-button.recording::before,
 .voice-button.recording::after {
@@ -273,11 +236,9 @@ h1 {
     animation: ripple 2s infinite cubic-bezier(0.23, 1, 0.32, 1);
     z-index: 1;
 }
-
 .voice-button.recording::after {
     animation-delay: 1s;
 }
-
 @keyframes ripple {
     0% {
         transform: translate(-50%, -50%) scale(1);
@@ -288,11 +249,9 @@ h1 {
         opacity: 0;
     }
 }
-
 .voice-button.recording {
-    background: #ff4d99; /* Darker pink when recording */
+    background: #ff4d99;
 }
-
 /* --- Status Message Styling (New) --- */
 .status-message {
     text-align: center;
@@ -304,31 +263,26 @@ h1 {
     background: rgba(255, 255, 255, 0.05);
     transition: all 0.3s ease;
 }
-
 .status-message.speaking {
     background: rgba(34, 197, 94, 0.2);
     color: #4ade80;
 }
-
 .status-message.turn-complete {
     background: rgba(255, 152, 0, 0.2);
     color: #ffa726;
 }
-
-/* Update message animations */
+/* --- Update message animations --- */
 .message {
     opacity: 0;
     transform: translateY(10px);
     animation: fadeIn 0.3s ease forwards;
 }
-
 @keyframes fadeIn {
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
-
 @keyframes popIn {
     from {
         opacity: 0;
@@ -339,288 +293,455 @@ h1 {
         transform: scale(1) translateY(0);
     }
 }
-
 /* --- Configuration Section Styling (New) --- */
-/* Style for the configuration section */
 .config-section {
-    width: 350px; /* Increased width for the config section */
-    max-height: 90%; /* Limit height to prevent overflow */
-    overflow-y: auto; /* Enable scrolling if content exceeds height */
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    padding: 20px;
-    font-family: 'Inter', sans-serif; /* Match the existing font */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%; /* Default width for all devices */
+    max-width: 500px; /* Limit width for larger screens */
+    max-height: 90%; /* Prevent overflow */
+    overflow-y: auto; /* Enable scrolling for long content */
+    z-index: 2000;
+    background: linear-gradient(135deg, #f4a261, #e76f51); /* Match project theme */
+    border-radius: 16px; /* Rounded corners */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+    padding: 20px; /* Padding inside the modal */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
     color: #ffffff; /* White text for readability */
-    z-index: 1000; /* Ensure it appears above other elements */
-    text-align: justify; /* Justify the text content */
 }
 
-/* Style for the configuration note */
-.config-note {
+.config-section h2 {
+    font-size: 1.5em;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #ffffff; /* White text for the heading */
+    text-align: center;
+}
+
+.config-section p {
     font-size: 0.9em;
-    color: rgba(255, 255, 255, 0.8); /* Subtle white for readability */
-    background: rgba(255, 255, 255, 0.05); /* Match the form background */
-    padding: 8px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    text-align: justify; /* Justify the note text */
-    line-height: 1.4;
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border for emphasis */
+    color: rgba(255, 255, 255, 0.8); /* Subtle white text for instructions */
+    margin-bottom: 20px;
+    text-align: center;
 }
 
-/* Style for labels */
 .config-section label {
-    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
     margin-top: 10px;
-    font-weight: 600; /* Slightly bold for emphasis */
-    color: rgba(255, 255, 255, 0.8); /* Subtle white for labels */
-    text-align: justify; /* Justify label text */
+    color: #ffffff; /* White text for labels */
 }
 
 .config-section input {
-    width: 100%; /* Full width input fields */
-    padding: 10px;
-    margin-top: 5px;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
     border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
-    border-radius: 8px; /* Rounded corners */
+    border-radius: 8px;
     font-size: 1em;
-    font-family: 'Inter', sans-serif;
-    background: rgba(255, 255, 255, 0.05); /* Match the chat history background */
+    background: rgba(255, 255, 255, 0.1); /* Transparent input background */
     color: #ffffff; /* White text for readability */
-    box-sizing: border-box; /* Ensure padding doesn't affect width */
+    box-sizing: border-box;
 }
 
 .config-section input:focus {
-    border-color: #2a9d8f; /* Highlight border on focus */
-    outline: none; /* Remove default outline */
-    box-shadow: 0 0 5px rgba(42, 157, 143, 0.5); /* Add subtle glow */
+    border-color: #ffffff; /* White border on focus */
+    outline: none;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* Subtle glow */
 }
 
 .config-section button {
+    width: 100%;
+    padding: 12px;
     margin-top: 15px;
-    padding: 10px 15px;
-    background: #2a9d8f; /* Match the speak button background */
-    color: white; /* White text for contrast */
-    border: none;
-    border-radius: 8px; /* Rounded corners */
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    transition: background-color 0.3s ease; /* Smooth hover effect */
-}
-
-.config-section button:hover {
-    background: #264653; /* Slightly darker green on hover */
-}
-
-.config-section p#error-message {
-    margin-top: 10px;
-    font-size: 0.9em;
-    color: #ef4444; /* Red for error messages */
-    text-align: center; /* Center the error message */
-}
-
-/* Toggle button styling */
-.config-toggle {
-    position: fixed;
-    top: 5%; /* Keep the button at the top */
-    left: 2%; /* Push the button further to the left */
-    z-index: 1100;
-}
-
-.config-toggle button {
-    padding: 10px 15px;
-    background: #2a9d8f;
-    color: white;
+    background: #e76f51; /* Match project theme */
+    color: #ffffff; /* White text for contrast */
     border: none;
     border-radius: 8px;
-    cursor: pointer;
     font-size: 1em;
     font-weight: 600;
+    cursor: pointer;
     transition: background-color 0.3s ease;
 }
 
-.config-toggle button:hover {
-    background: #264653;
+.config-section button:hover {
+    background: #f4a261; /* Lighter orange on hover */
 }
 
-/* Scrollbar styling for the configuration section */
-.config-section::-webkit-scrollbar {
-    width: 8px; /* Width of the scrollbar */
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
 }
 
-.config-section::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1); /* Track background color */
-    border-radius: 4px; /* Rounded corners for the track */
+.button-container button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
-.config-section::-webkit-scrollbar-thumb {
-    background: rgba(42, 157, 143, 0.8); /* Thumb color (green to match UI) */
-    border-radius: 4px; /* Rounded corners for the thumb */
+#save-api-keys {
+    background: #f4a261; /* Orange background for Save button */
+    color: #ffffff; /* White text */
 }
 
-.config-section::-webkit-scrollbar-thumb:hover {
-    background: rgba(42, 157, 143, 1); /* Darker green on hover */
+#save-api-keys:hover {
+    background: #e76f51; /* Darker orange on hover */
 }
 
-/* Responsive styles for tablets and smaller screens */
+#close-modal {
+    background: #e76f51; /* Orange background for Close button */
+    color: #ffffff; /* White text */
+}
+
+#close-modal:hover {
+    background: #f4a261; /* Lighter orange on hover */
+}
+
+/* Modal styles for Mobile - Remove Scroll and use full viewport height */
+
+@media (max-width: 768px) {
+  .config-section {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%; /* Match general modal width */
+    max-width: 380px; /* Limit width for smaller screens */
+    max-height: 90%; /* Prevent overflow */
+    overflow-y: auto; /* Enable scrolling for long content */
+    z-index: 2000;
+    background: linear-gradient(135deg, #f4a261, #e76f51); /* Match project theme */
+    border-radius: 16px; /* Rounded corners */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+    padding: 20px; /* Padding inside the modal */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    color: #ffffff; /* White text for readability */
+  }
+
+  .config-section h2 {
+    font-size: 1.5em; /* Match general modal heading size */
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #ffffff; /* White text for the heading */
+    text-align: center;
+  }
+
+  .config-section p {
+    font-size: 0.9em; /* Match general modal paragraph size */
+    color: rgba(255, 255, 255, 0.8); /* Subtle white text for instructions */
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .config-section label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    margin-top: 10px;
+    color: #ffffff; /* White text for labels */
+  }
+
+  .config-section input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+    border-radius: 8px;
+    font-size: 1em;
+    background: rgba(255, 255, 255, 0.1); /* Transparent input background */
+    color: #ffffff; /* White text for readability */
+    box-sizing: border-box;
+  }
+
+  .config-section input:focus {
+    border-color: #ffffff; /* White border on focus */
+    outline: none;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* Subtle glow */
+  }
+
+  .config-section button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 15px;
+    background: #e76f51; /* Match project theme */
+    color: #ffffff; /* White text for contrast */
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .config-section button:hover {
+    background: #f4a261; /* Lighter orange on hover */
+  }
+
+  .button-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .button-container button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  #save-api-keys {
+    background: #f4a261; /* Orange background for Save button */
+    color: #ffffff; /* White text */
+  }
+
+  #save-api-keys:hover {
+    background: #e76f51; /* Darker orange on hover */
+  }
+
+  #close-modal {
+    background: #e76f51; /* Orange background for Close button */
+    color: #ffffff; /* White text */
+  }
+
+  #close-modal:hover {
+    background: #f4a261; /* Lighter orange on hover */
+  }
+}
+/* styles for tablets and smaller screens */
 @media (max-width: 1024px) {
     .container {
         max-width: 90%;
         margin: 1rem;
         padding: 1.5rem;
     }
-
     .chat-container {
+        
         padding: 1.5rem;
     }
-
     h1 {
         font-size: 2rem;
     }
-
     .subtitle {
         font-size: 0.9rem;
     }
-
     .message {
         font-size: 0.85rem;
         padding: 10px;
     }
-
     .speak-button, .stop-button {
         padding: 0.8rem 1.5rem;
         font-size: 0.9rem;
     }
-
     .config-section {
-        width: 250px; /* Adjust width for smaller screens */
+        width: 250px;
         padding: 15px;
     }
-
     .config-section h2 {
         font-size: 1.3em;
     }
-
     .config-section input {
         padding: 8px;
         font-size: 0.9em;
     }
-
     .config-section button {
         padding: 8px 12px;
         font-size: 0.9em;
     }
 }
-
 /* Responsive styles for phones */
 @media (max-width: 768px) {
     .container {
-        flex-direction: column; /* Stack elements vertically */
+        flex-direction: column;
         max-width: 100%;
         margin: 0.5rem;
         padding: 1rem;
     }
-
     .chat-container {
         padding: 1rem;
     }
-
     h1 {
         font-size: 1.8rem;
-        text-align: center; /* Center the title */
+        text-align: center;
     }
-
     .subtitle {
         font-size: 0.8rem;
-        text-align: center; /* Center the subtitle */
+        text-align: center;
     }
-
     .message {
         font-size: 0.8rem;
         padding: 8px;
     }
-
     .speak-button, .stop-button {
         padding: 0.6rem 1rem;
         font-size: 0.8rem;
     }
-
+    /* Override modal width and padding on phones */
     .config-section {
-        width: 220px; /* Further adjust width for smaller screens */
-        padding: 10px;
-        margin: 0 auto; /* Center the config section */
+        width: 100vw;
+        height: 100vh;
+        padding: 20px;
+        margin: 0;
+        border-radius: 0;
+        background: white;
+        overflow-y: hidden;
+        /* ensure modal content takes full viewport with no scroll */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        color: #333;
     }
-
     .config-section h2 {
-        font-size: 1.2em;
-        text-align: center; /* Center the heading */
+        text-align: center;
+        font-size: 1.5em;
+        font-weight: 700;
+        margin-bottom: 3px;
     }
-
+    .config-section p {
+        text-align: center;
+        color: #555;
+        margin-bottom: 20px;
+        font-size: 0.9em;
+    }
     .config-section input {
-        padding: 6px;
-        font-size: 0.8em;
+        font-size: 1em;
+        color: #333;
+        background: #f9f9f9;
+        border: 1px solid #ccc;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 4px;
+        width: 100%;
+        box-sizing: border-box;
     }
-
     .config-section button {
-        padding: 6px 10px;
-        font-size: 0.8em;
+        width: 100%;
+        background: #06986a;
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 1em;
+        cursor: pointer;
+        margin-top: 15px;
+        transition: background-color 0.3s ease;
+    }
+    .config-section button:hover {
+        background: #1dd8c5;
     }
 }
-
 /* Responsive styles for very small phones */
 @media (max-width: 480px) {
     .container {
         margin: 0;
         padding: 0.5rem;
-        flex-direction: column; /* Stack elements vertically */
+        flex-direction: column;
     }
-
     .chat-container {
         padding: 0.5rem;
     }
-
     h1 {
         font-size: 1.5rem;
-        text-align: center; /* Center the title */
+        text-align: center;
     }
-
     .subtitle {
         font-size: 0.7rem;
-        text-align: center; /* Center the subtitle */
+        text-align: center;
     }
-
     .message {
         font-size: 0.75rem;
         padding: 6px;
     }
-
     .speak-button, .stop-button {
         padding: 0.5rem 0.8rem;
         font-size: 0.75rem;
     }
-
     .config-section {
-        width: 200px; /* Narrower width for very small screens */
-        padding: 8px;
-        margin: 0 auto; /* Center the config section */
+        width: 100vw;
+        height: 100vh;
+        padding: 10px;
+        margin: 0 auto;
+        border-radius: 0;
     }
-
     .config-section h2 {
-        font-size: 1.1em;
-        text-align: center; /* Center the heading */
+        font-size: 1.2em;
+        text-align: center;
     }
-
     .config-section input {
-        padding: 5px;
+        padding: 4px;
         font-size: 0.75em;
     }
-
     .config-section button {
-        padding: 5px 8px;
+        padding: 8px 10px;
         font-size: 0.75em;
     }
 }
+.button-container {
+    display: flex; /* Use flexbox for layout */
+    justify-content: space-between; /* Space buttons evenly */
+    gap: 10px; /* Add space between buttons */
+    margin-top: 20px; /* Add space above the button container */
+}
+
+.button-container button {
+    flex: 2; /* Make buttons equal width */
+    padding: 12px; /* Add padding inside buttons */
+    border: none; /* Remove border */
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1em; /* Standard font size */
+    font-weight: 600; /* Bold text */
+    cursor: pointer; /* Pointer cursor for interactivity */
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+#save-api-keys {
+    background: #11ca98; /* Blue background for Save button */
+    color: #fff; /* White text */
+}
+
+#save-api-keys:hover {
+    background: #1dd8af; /* Darker blue on hover */
+}
+.config-toggle {
+    position: fixed;
+    top: 10px; /* Position at the top */
+    right: 10px; /* Position at the right */
+    z-index: 1100; /* Ensure it appears above other elements */
+}
+
+.config-toggle button {
+    background: transparent; /* Remove background */
+    border: none; /* Remove border */
+    cursor: pointer; /* Pointer cursor for interactivity */
+    font-size: 1.5em; /* Adjust icon size */
+    color: #ffffff; /* White color for the icon */
+    transition: color 0.3s ease; /* Smooth hover effect */
+}
+
+.config-toggle button:hover {
+    color: #f4a261; /* Change color on hover to match theme */
+}
+
+
+
