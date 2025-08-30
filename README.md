@@ -1,7 +1,7 @@
 # Mini project
 
 
-# Nutsy: The AI Hyperactive Squirrel 🐿️ — Your Voice Agent
+# Nutsy: The AI Hyperactive Squirrel 🐿️ — Voice Agent
 
 A real-time voice chat interface that enables natural conversations with an AI assistant using speech recognition, language models, and text-to-speech synthesis.
 
