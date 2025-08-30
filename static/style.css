@@ -1,3 +1,103 @@
+/* Blur background when modal is open */
+.modal-blur .container,
+.modal-blur .chat-container,
+.modal-blur .chat-history,
+.modal-blur header,
+.modal-blur .control-panel {
+    filter: blur(6px) brightness(0.9);
+    pointer-events: none;
+    user-select: none;
+    transition: filter 0.3s;
+}
+/* Responsive styles for tablets and large phones */
+@media (max-width: 900px) {
+    .container {
+        max-width: 98vw;
+        padding: 10px;
+    }
+    .chat-container {
+        padding: 10px;
+        min-width: 0;
+    }
+    .chat-history {
+        max-height: 200px;
+        font-size: 0.95em;
+    }
+    .message {
+        font-size: 0.95em;
+        padding: 8px;
+    }
+    .config-section {
+        width: 95vw;
+        min-width: 0;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 700px) {
+    .container {
+        padding: 4px;
+    }
+    .chat-container {
+        padding: 4px;
+    }
+    .chat-history {
+        max-height: 150px;
+        font-size: 0.9em;
+    }
+    .message {
+        font-size: 0.9em;
+        padding: 6px;
+    }
+    .speak-button, .stop-button {
+        padding: 0.6rem 1rem;
+        font-size: 0.9em;
+    }
+    .config-section {
+        width: 100vw;
+        padding: 6px;
+    }
+    .config-section input {
+        font-size: 0.9em;
+        padding: 8px;
+    }
+    .config-section button {
+        font-size: 0.9em;
+        padding: 10px 12px;
+    }
+}
+
+/* Improve touch targets and spacing */
+.speak-button, .stop-button, .config-section button {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+}
+
+.config-section input {
+    min-height: 40px;
+    font-size: 1em;
+    padding: 10px;
+}
+
+/* Modal/config always usable on small screens */
+.config-section {
+    max-width: 100vw;
+    max-height: 100vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* Flexible font and spacing adjustments */
+body, .container, .chat-container, .config-section, .message, .speak-button, .stop-button {
+    font-size: 1em;
+    line-height: 1.5;
+}
+@media (max-width: 350px) {
+    .message, .speak-button, .stop-button, .config-section input, .config-section button {
+        font-size: 0.7em;
+    }
+}
 /* Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');

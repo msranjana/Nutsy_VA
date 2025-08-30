@@ -576,9 +576,11 @@ const enableVoiceButton = () => {
     const toggleConfigButton = document.getElementById('toggle-config-button');
     const closeButton = document.createElement('button');
 
+
     toggleConfigButton.addEventListener('click', () => {
-        configSection.style.display = 'block';
-        document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
+      configSection.style.display = 'block';
+      document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
+      document.body.classList.add('modal-blur');
     });
 
     closeButton.addEventListener('click', () => {
@@ -588,9 +590,11 @@ const enableVoiceButton = () => {
 
     const closeModalButton = document.getElementById('close-modal');
 
+
 closeModalButton.addEventListener('click', () => {
-    configSection.style.display = 'none';
-    document.body.style.overflow = 'auto'; // Restore scrolling
+  configSection.style.display = 'none';
+  document.body.style.overflow = 'auto'; // Restore scrolling
+  document.body.classList.remove('modal-blur');
 });
 
     const saveApiKeysButton = document.getElementById('save-api-keys');
