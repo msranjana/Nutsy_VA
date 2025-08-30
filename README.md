@@ -20,8 +20,7 @@ A real-time voice chat interface that enables natural conversations with an AI a
 
 ## 🏗️ Architecture
 
-![Project Architecture](![alt text](docs/image.png))
-
+![Project Architecture](docs/image.png)
 ### Flow
 
 1. **Voice Capture**: The browser's built-in APIs handle the voice input from the user.
