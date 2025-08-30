@@ -557,37 +557,12 @@ function formatMessageText(text) {
     console.log(`Appended ${type} message:`, text); // Debug log
 }
 
-  voiceButton.addEventListener('click', () => {
-    // Check if API keys are set
-    if (!areApiKeysSet()) {
-        // Show notification if API keys are not set
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-icon">⚠️</span>
-                <span class="notification-text">Please enter all API keys before starting!</span>
-                <button class="notification-close">OK</button>
-            </div>
-        `;
-        document.body.appendChild(notification);
+  // Disable voice button by default
+voiceButton.disabled = true;
 
-        // Close notification on button click
-        const closeButton = notification.querySelector('.notification-close');
-        closeButton.addEventListener('click', () => {
-            document.body.removeChild(notification);
-        });
-
-        return;
-    }
-
-    // Proceed with recording logic if API keys are set
-    isRecording = !isRecording;
-    micIcon.textContent = isRecording ? '🎙️ Recording...' : '🎤 Start Recording';
-    statusMessage.textContent = isRecording
-        ? '*bouncing excitedly* Nutsy is listening!'
-        : '*bouncing excitedly* Press the acorn button to chat with Nutsy!';
-});
+const enableVoiceButton = () => {
+    voiceButton.disabled = false;
+};
 
     const configSection = document.getElementById('config-section');
     const toggleConfigButton = document.getElementById('toggle-config-button');
@@ -627,9 +602,7 @@ saveApiKeysButton.addEventListener('click', async () => {
     try {
         const response = await fetch('/api/set-keys', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 assemblyai_key: assemblyaiKey,
                 gemini_key: geminiKey,
@@ -643,7 +616,8 @@ saveApiKeysButton.addEventListener('click', async () => {
         if (result.status === 'success') {
             alert('API keys saved successfully!');
             configSection.style.display = 'none';
-            document.body.style.overflow = 'auto'; // Restore scrolling
+            document.body.style.overflow = 'auto';
+            enableVoiceButton(); // Enable voice button only after successful save
         } else {
             alert(`Error saving API keys: ${result.message}`);
         }
@@ -653,13 +627,15 @@ saveApiKeysButton.addEventListener('click', async () => {
     }
 });
 
-document.getElementById('voiceButton').disabled = true;
+// Update voice button click to actually start/stop recording
+voiceButton.addEventListener('click', async () => {
+    if (!areApiKeysSet()) {
+        alert('Please enter all API keys before starting!');
+        return;
+    }
+    await toggleRecording(); // This will call startRecording or stopRecording
+});
 
-const enableVoiceButton = () => {
-    voiceButton.disabled = false;
-};
-
-saveApiKeysButton.addEventListener('click', enableVoiceButton);
 
 // Media query styles should be in a CSS file
 });
