@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             socket.onopen = () => {
                 isRecording = true;
                 updateUIForRecording();
-                statusMessage.textContent = '🎙️ Nutsy is listening...';  // Changed
+                statusMessage.textContent = '🎙️ Nutsy is listening...';
                 statusMessage.classList.add('show');
                 if (isPlayingAudio) stopAudioPlayback();
                 accumulatedAudioChunks = [];
@@ -120,7 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
     } catch (error) {
-      statusMessage.textContent = '❌ Microphone access denied. Please allow microphone permissions.';
+        console.error('startRecording error:', error);
+        if (error && error.name === 'NotAllowedError') {
+            statusMessage.textContent = '❌ Microphone access denied. Please allow microphone permissions.';
+        } else if (error && error.name === 'NotFoundError') {
+            statusMessage.textContent = '❌ No microphone found on this device.';
+        } else {
+            statusMessage.textContent = '❌ Could not start recording. Please check your connection and try again.';
+        }
     }
   };
 
