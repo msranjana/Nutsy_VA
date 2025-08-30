@@ -48,7 +48,6 @@ A real-time voice chat interface that enables natural conversations with an AI a
 
 ### Prerequisites
 - Python **3.9+**  
-- (Optional) Node.js (for frontend tooling/dev convenience)  
 - API keys:  
   - AssemblyAI  
   - Google Gemini  
