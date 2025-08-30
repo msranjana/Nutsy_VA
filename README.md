@@ -20,7 +20,7 @@ A real-time voice chat interface that enables natural conversations with an AI a
 
 ## 🏗️ Architecture
 
-Voice Input (Browser) → Speech-to-Text (AssemblyAI) → AI Processing (Gemini) → Text-to-Speech (Murf) → Audio Output
+![Project Architecture](![alt text](docs/image.png))
 
 ### Flow
 
