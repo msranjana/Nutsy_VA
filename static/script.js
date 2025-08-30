@@ -54,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
             mediaStreamSource.connect(processor);
             processor.connect(audioContext.destination);
 
-            socket = new WebSocket(`ws://${window.location.host}/ws`);
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws`);
 
             socket.onopen = () => {
                 isRecording = true;
