@@ -1,60 +1,71 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const voiceButton = document.getElementById('voiceButton');
-  const micIcon = document.getElementById('micIcon');
-  const statusMessage = document.getElementById('statusMessage');
-  let isRecording = false;
-  let audioContext = null;
-  let mediaStreamSource = null;
-  let processor = null;
-  let socket = null;
-  let accumulatedAudioChunks = [];
-  let playbackAudioContext = null;
-  let isPlayingAudio = false;
-  let currentAudioSource = null;
-  let playbackStartTime = 0;
-  let totalPlaybackDuration = 0;
-  const SAMPLE_RATE = 16000;
-  const BUFFER_SIZE = 4096;
-  const PLAYBACK_SAMPLE_RATE = 44100;
+    const voiceButton = document.getElementById('voiceButton');
+    const micIcon = document.getElementById('micIcon');
+    const statusMessage = document.getElementById('statusMessage');
+    let isRecording = false;
+    let audioContext = null;
+    let mediaStreamSource = null;
+    let processor = null;
+    let socket = null;
+    let accumulatedAudioChunks = [];
+    let playbackAudioContext = null;
+    let isPlayingAudio = false;
+    let currentAudioSource = null;
+    let playbackStartTime = 0;
+    let totalPlaybackDuration = 0;
+    const SAMPLE_RATE = 16000;
+    const BUFFER_SIZE = 4096;
+    const PLAYBACK_SAMPLE_RATE = 44100;
 
-  const toggleRecording = async () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      await startRecording();
-    }
-  };
+    // Check if API keys are set
+    const areApiKeysSet = () => {
+        return (
+            document.getElementById('assemblyai-key').value.trim() &&
+            document.getElementById('gemini-key').value.trim() &&
+            document.getElementById('murf-key').value.trim() &&
+            document.getElementById('tavily-key').value.trim() &&
+            document.getElementById('weather-key').value.trim()
+        );
+    };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      mediaStreamSource = audioContext.createMediaStreamSource(stream);
-      processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
+    const toggleRecording = async () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            await startRecording();
+        }
+    };
 
-      processor.onaudioprocess = (e) => {
-        if (!isRecording || !socket || socket.readyState !== WebSocket.OPEN) return;
-        const inputData = e.inputBuffer.getChannelData(0);
-        const downsampledBuffer = downsampleBuffer(inputData, audioContext.sampleRate, SAMPLE_RATE);
-        const pcm16 = to16BitPCM(downsampledBuffer);
-        socket.send(pcm16);
-      };
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            mediaStreamSource = audioContext.createMediaStreamSource(stream);
+            processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 
-      mediaStreamSource.connect(processor);
-      processor.connect(audioContext.destination);
+            processor.onaudioprocess = (e) => {
+                if (!isRecording || !socket || socket.readyState !== WebSocket.OPEN) return;
+                const inputData = e.inputBuffer.getChannelData(0);
+                const downsampledBuffer = downsampleBuffer(inputData, audioContext.sampleRate, SAMPLE_RATE);
+                const pcm16 = to16BitPCM(downsampledBuffer);
+                socket.send(pcm16);
+            };
 
-      socket = new WebSocket(`ws://${window.location.host}/ws`);
+            mediaStreamSource.connect(processor);
+            processor.connect(audioContext.destination);
 
-      socket.onopen = () => {
-        isRecording = true;
-        updateUIForRecording();
-        statusMessage.textContent = '🎙️ Nutsy is listening...';  // Changed
-        statusMessage.classList.add('show');
-        if (isPlayingAudio) stopAudioPlayback();
-        accumulatedAudioChunks = [];
-      };
+            socket = new WebSocket(`ws://${window.location.host}/ws`);
 
-      socket.onmessage = async (event) => {
+            socket.onopen = () => {
+                isRecording = true;
+                updateUIForRecording();
+                statusMessage.textContent = '🎙️ Nutsy is listening...';  // Changed
+                statusMessage.classList.add('show');
+                if (isPlayingAudio) stopAudioPlayback();
+                accumulatedAudioChunks = [];
+            };
+
+            socket.onmessage = async (event) => {
     try {
         const data = JSON.parse(event.data);
         console.log('WebSocket message received:', data); // Debug log
@@ -546,7 +557,37 @@ function formatMessageText(text) {
     console.log(`Appended ${type} message:`, text); // Debug log
 }
 
-  voiceButton.addEventListener('click', toggleRecording);
+  voiceButton.addEventListener('click', () => {
+    // Check if API keys are set
+    if (!areApiKeysSet()) {
+        // Show notification if API keys are not set
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-icon">⚠️</span>
+                <span class="notification-text">Please enter all API keys before starting!</span>
+                <button class="notification-close">OK</button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+
+        // Close notification on button click
+        const closeButton = notification.querySelector('.notification-close');
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(notification);
+        });
+
+        return;
+    }
+
+    // Proceed with recording logic if API keys are set
+    isRecording = !isRecording;
+    micIcon.textContent = isRecording ? '🎙️ Recording...' : '🎤 Start Recording';
+    statusMessage.textContent = isRecording
+        ? '*bouncing excitedly* Nutsy is listening!'
+        : '*bouncing excitedly* Press the acorn button to chat with Nutsy!';
+});
 
     const configSection = document.getElementById('config-section');
     const toggleConfigButton = document.getElementById('toggle-config-button');
@@ -571,58 +612,60 @@ closeModalButton.addEventListener('click', () => {
 
     const saveApiKeysButton = document.getElementById('save-api-keys');
 
-    saveApiKeysButton.addEventListener('click', async () => {
-        const assemblyaiKey = document.getElementById('assemblyai-key').value.trim();
-        const geminiKey = document.getElementById('gemini-key').value.trim();
-        const murfKey = document.getElementById('murf-key').value.trim();
-        const tavilyKey = document.getElementById('tavily-key').value.trim();
-        const weatherKey = document.getElementById('weather-key').value.trim();
+saveApiKeysButton.addEventListener('click', async () => {
+    const assemblyaiKey = document.getElementById('assemblyai-key').value.trim();
+    const geminiKey = document.getElementById('gemini-key').value.trim();
+    const murfKey = document.getElementById('murf-key').value.trim();
+    const tavilyKey = document.getElementById('tavily-key').value.trim();
+    const weatherKey = document.getElementById('weather-key').value.trim();
 
-        // Validate that all fields are filled
-        if (!assemblyaiKey || !geminiKey || !murfKey || !tavilyKey || !weatherKey) {
-            alert('All API keys must be filled in!');
-            return;
+    if (!assemblyaiKey || !geminiKey || !murfKey || !tavilyKey || !weatherKey) {
+        alert('All API keys must be filled in!');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/set-keys', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                assemblyai_key: assemblyaiKey,
+                gemini_key: geminiKey,
+                murf_key: murfKey,
+                tavily_key: tavilyKey,
+                weather_key: weatherKey,
+            }),
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+            alert('API keys saved successfully!');
+            configSection.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        } else {
+            alert(`Error saving API keys: ${result.message}`);
         }
+    } catch (error) {
+        console.error('Error saving API keys:', error);
+        alert('Failed to save API keys.');
+    }
+});
 
-        // Validate API key formats (basic validation for non-empty strings)
-        const apiKeyRegex = /^[a-zA-Z0-9-_]+$/; // Example regex for alphanumeric keys
-        if (
-            !apiKeyRegex.test(assemblyaiKey) ||
-            !apiKeyRegex.test(geminiKey) ||
-            !apiKeyRegex.test(murfKey) ||
-            !apiKeyRegex.test(tavilyKey) ||
-            !apiKeyRegex.test(weatherKey)
-        ) {
-            alert('One or more API keys are invalid. Please check their format.');
-            return;
-        }
+document.getElementById('voiceButton').disabled = true;
 
-        try {
-            const response = await fetch('/api/set-keys', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    assemblyai_key: assemblyaiKey,
-                    gemini_key: geminiKey,
-                    murf_key: murfKey,
-                    tavily_key: tavilyKey,
-                    weather_key: weatherKey,
-                }),
-            });
+const enableVoiceButton = () => {
+    voiceButton.disabled = false;
+};
 
-            const result = await response.json();
-            if (result.status === 'success') {
-                alert('API keys saved successfully!');
-            } else {
-                alert(`Error saving API keys: ${result.message}`);
-            }
-        } catch (error) {
-            console.error('Error saving API keys:', error);
-            alert('Failed to save API keys.');
-        }
-    });
+saveApiKeysButton.addEventListener('click', enableVoiceButton);
 
 // Media query styles should be in a CSS file
 });
+
+function validate_api_keys() {
+    if (!ASSEMBLY_KEY || !GEMINI_API_KEY || !MURF_KEY || !TAVILY_KEY || !WEATHER_API_KEY) {
+        throw new Error("All API keys must be provided via the modal.");
+    }
+}

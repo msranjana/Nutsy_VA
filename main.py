@@ -510,3 +510,8 @@ async def set_api_keys(
         return {"status": "success", "message": "API keys updated successfully"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.post("/agent/chat/{session_id}")
+async def agent_chat(session_id: str, user_text: str):
+    validate_api_keys()  # Ensure keys are set
+    # Proceed with model execution

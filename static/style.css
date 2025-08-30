@@ -17,44 +17,47 @@ body {
     align-items: center;
     color: #ffffff;
 }
-/* Container styling */
+
+/* General container styling */
 .container {
-    width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
-    display: flex;
-    gap: 2rem;
-    align-items: flex-start;
+    padding: 20px;
+    box-sizing: border-box;
 }
+
+/* Chat container styling */
 .chat-container {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    animation: bounce 1s ease infinite;
-}
-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    margin-bottom: 2rem;
+    padding: 20px;
+    background: linear-gradient(135deg, #f4a261, #e76f51); /* Match project theme */
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    color: #ffffff;
 }
-h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #2a9d8f, #264653);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+
+/* Header styling */
+header h1 {
+    font-size: 2em;
+    margin-bottom: 10px;
 }
+
 .subtitle {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 1rem;
-    line-height: 1.5;
+    font-size: 1em;
+    margin-bottom: 20px;
 }
+
+/* Status message styling */
+.status-message {
+    text-align: center; /* Align text to the center */
+    margin: 20px auto; /* Center the element horizontally */
+    font-size: 1em; /* Adjust font size */
+    color: #ffffff; /* White text for readability */
+}
+
 /* Message styling */
 .message {
     margin: 8px;
@@ -96,6 +99,7 @@ h1 {
 .message-text {
     line-height: 1.4;
 }
+
 /* Clickable links */
 .message a {
     color: #5e4ade;
@@ -106,120 +110,46 @@ h1 {
 .message a:hover {
     color: #1373d3;
 }
+
 /* Chat history */
 .chat-history {
-    max-height: 400px;
+    width: 100%;
+    max-height: 300px;
     overflow-y: auto;
-    margin: 20px 0;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1) !important;
-    display: flex !important;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.control-panel {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    padding-top: 1rem;
-}
-.speak-button, .stop-button {
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s ease;
-}
-.speak-button {
-    background: #2a9d8f;
-    animation: wiggle 2s ease-in-out infinite;
-}
-.speak-button:hover {
-    background: #264653;
-    transform: scale(1.05) rotate(-5deg);
-}
-.stop-button {
-    background: #ef4444;
-    color: white;
-    opacity: 0.5;
-}
-.stop-button:enabled {
-    opacity: 1;
-}
-.stop-button:enabled:hover {
-    background: #dc2626;
-}
-/* Recording animation */
-.recording .speak-button {
-    animation: pulse 2s infinite;
-}
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
-}
-@keyframes bounceIn {
-    0% { opacity: 0; transform: scale(0.3); }
-    50% { transform: scale(1.05); }
-    70% { transform: scale(0.9); }
-    100% { opacity: 1; transform: scale(1); }
-}
-@keyframes wiggle {
-    0%, 100% { transform: rotate(-5deg); }
-    50% { transform: rotate(5deg); }
-}
-/* Scrollbar styling */
-.chat-history::-webkit-scrollbar {
-    width: 8px;
-}
-.chat-history::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 8px;
+    padding: 10px;
+    box-sizing: border-box;
 }
-.chat-history::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+
+/* Control panel styling */
+.control-panel {
+    margin-top: 20px;
 }
-.chat-history::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+
+.speak-button {
+    display: flex; /* Use flexbox for alignment */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+    margin: 20px auto; /* Center the button horizontally */
+    background: #2a9d8f; /* Green-teal background */
+    color: #ffffff; /* White text */
+    border: none; /* Remove border */
+    border-radius: 8px; /* Rounded corners */
+    padding: 12px 20px; /* Add padding */
+    font-size: 1em; /* Adjust font size */
+    cursor: pointer; /* Pointer cursor for interactivity */
+    transition: background-color 0.3s ease; /* Smooth hover effect */
 }
-/* --- Voice Agent Card Styling --- */
-.voice-button-container {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 150px;
+
+.speak-button:hover {
+    background: #1d6f5b; /* Darker green-teal on hover */
 }
-.voice-button {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: none;
-    background: #FF69B4;
-    color: white;
-    font-size: 2rem;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    transition: background-color 0.3s, transform 0.3s;
-    position: relative;
-    z-index: 10;
+
+.speak-button i {
+    margin-right: 8px; /* Add spacing between icon and text */
 }
-.voice-button:hover {
-    background: #ff85c1;
-    transform: scale(1.05);
-}
+
 /* Ripple animation for recording state */
 .voice-button.recording::before,
 .voice-button.recording::after {
@@ -252,115 +182,61 @@ h1 {
 .voice-button.recording {
     background: #ff4d99;
 }
-/* --- Status Message Styling (New) --- */
-.status-message {
-    text-align: center;
-    padding: 0.8rem;
-    margin: 1rem 0;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.8);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-}
-.status-message.speaking {
-    background: rgba(34, 197, 94, 0.2);
-    color: #4ade80;
-}
-.status-message.turn-complete {
-    background: rgba(255, 152, 0, 0.2);
-    color: #ffa726;
-}
-/* --- Update message animations --- */
-.message {
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeIn 0.3s ease forwards;
-}
-@keyframes fadeIn {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-@keyframes popIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8) translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-/* --- Configuration Section Styling (New) --- */
+
+/* Modal styling */
 .config-section {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 90%; /* Default width for all devices */
-    max-width: 500px; /* Limit width for larger screens */
-    max-height: 90%; /* Prevent overflow */
-    overflow-y: auto; /* Enable scrolling for long content */
-    z-index: 2000;
-    background: linear-gradient(135deg, #f4a261, #e76f51); /* Match project theme */
-    border-radius: 16px; /* Rounded corners */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-    padding: 20px; /* Padding inside the modal */
+    width: 90%;
+    max-width: 500px;
+    max-height: 90%;
+    overflow-y: auto;
+    background: linear-gradient(135deg, #f4a261, #e76f51);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
     text-align: left;
-    color: #ffffff; /* White text for readability */
+    color: #ffffff;
+    z-index: 2000;
 }
 
-.config-section h2 {
-    font-size: 1.5em;
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: #ffffff; /* White text for the heading */
-    text-align: center;
-}
-
-.config-section p {
-    font-size: 0.9em;
-    color: rgba(255, 255, 255, 0.8); /* Subtle white text for instructions */
-    margin-bottom: 20px;
-    text-align: center;
-}
-
+/* Modal form styling */
 .config-section label {
     font-weight: 600;
     margin-bottom: 5px;
     margin-top: 10px;
-    color: #ffffff; /* White text for labels */
+    color: #ffffff;
 }
 
 .config-section input {
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     font-size: 1em;
-    background: rgba(255, 255, 255, 0.1); /* Transparent input background */
-    color: #ffffff; /* White text for readability */
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
     box-sizing: border-box;
 }
 
 .config-section input:focus {
-    border-color: #ffffff; /* White border on focus */
+    border-color: #ffffff;
     outline: none;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* Subtle glow */
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
 .config-section button {
     width: 100%;
     padding: 12px;
     margin-top: 15px;
-    background: #e76f51; /* Match project theme */
-    color: #ffffff; /* White text for contrast */
+    background: #2a9d8f;
+    color: #ffffff;
     border: none;
     border-radius: 8px;
     font-size: 1em;
@@ -370,7 +246,7 @@ h1 {
 }
 
 .config-section button:hover {
-    background: #f4a261; /* Lighter orange on hover */
+    background: #1d6f5b;
 }
 
 .button-container {
@@ -391,143 +267,60 @@ h1 {
     transition: background-color 0.3s ease;
 }
 
-#save-api-keys {
-    background: #f4a261; /* Orange background for Save button */
-    color: #ffffff; /* White text */
+/* Responsive styles for tablets */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 95%;
+        padding: 15px;
+    }
+
+    header h1 {
+        font-size: 1.8em;
+    }
+
+    .subtitle {
+        font-size: 0.9em;
+    }
+
+    .status-message {
+        font-size: 0.9em;
+    }
+
+    .config-section {
+        width: 95%;
+        max-width: 400px;
+        padding: 15px;
+    }
 }
 
-#save-api-keys:hover {
-    background: #e76f51; /* Darker orange on hover */
-}
-
-#close-modal {
-    background: #e76f51; /* Orange background for Close button */
-    color: #ffffff; /* White text */
-}
-
-#close-modal:hover {
-    background: #f4a261; /* Lighter orange on hover */
-}
-
-/* Modal styles for Mobile - Remove Scroll and use full viewport height */
-
+/* Responsive styles for phones */
 @media (max-width: 768px) {
-  .config-section {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%; /* Match general modal width */
-    max-width: 380px; /* Limit width for smaller screens */
-    max-height: 90%; /* Prevent overflow */
-    overflow-y: auto; /* Enable scrolling for long content */
-    z-index: 2000;
-    background: linear-gradient(135deg, #f4a261, #e76f51); /* Match project theme */
-    border-radius: 16px; /* Rounded corners */
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-    padding: 20px; /* Padding inside the modal */
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    text-align: left;
-    color: #ffffff; /* White text for readability */
-  }
+    .container {
+        max-width: 100%;
+        padding: 10px;
+    }
 
-  .config-section h2 {
-    font-size: 1.5em; /* Match general modal heading size */
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: #ffffff; /* White text for the heading */
-    text-align: center;
-  }
+    header h1 {
+        font-size: 1.5em;
+    }
 
-  .config-section p {
-    font-size: 0.9em; /* Match general modal paragraph size */
-    color: rgba(255, 255, 255, 0.8); /* Subtle white text for instructions */
-    margin-bottom: 20px;
-    text-align: center;
-  }
+    .subtitle {
+        font-size: 0.8em;
+    }
 
-  .config-section label {
-    font-weight: 600;
-    margin-bottom: 5px;
-    margin-top: 10px;
-    color: #ffffff; /* White text for labels */
-  }
+    .status-message {
+        font-size: 0.8em;
+    }
 
-  .config-section input {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
-    border-radius: 8px;
-    font-size: 1em;
-    background: rgba(255, 255, 255, 0.1); /* Transparent input background */
-    color: #ffffff; /* White text for readability */
-    box-sizing: border-box;
-  }
-
-  .config-section input:focus {
-    border-color: #ffffff; /* White border on focus */
-    outline: none;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* Subtle glow */
-  }
-
-  .config-section button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 15px;
-    background: #e76f51; /* Match project theme */
-    color: #ffffff; /* White text for contrast */
-    border: none;
-    border-radius: 8px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-
-  .config-section button:hover {
-    background: #f4a261; /* Lighter orange on hover */
-  }
-
-  .button-container {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 20px;
-  }
-
-  .button-container button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-
-  #save-api-keys {
-    background: #f4a261; /* Orange background for Save button */
-    color: #ffffff; /* White text */
-  }
-
-  #save-api-keys:hover {
-    background: #e76f51; /* Darker orange on hover */
-  }
-
-  #close-modal {
-    background: #e76f51; /* Orange background for Close button */
-    color: #ffffff; /* White text */
-  }
-
-  #close-modal:hover {
-    background: #f4a261; /* Lighter orange on hover */
-  }
+    .config-section {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        padding: 15px;
+    }
 }
-/* styles for tablets and smaller screens */
+
+/* Responsive styles for tablets and smaller screens */
 @media (max-width: 1024px) {
     .container {
         max-width: 90%;
@@ -568,6 +361,7 @@ h1 {
         font-size: 0.9em;
     }
 }
+
 /* Responsive styles for phones */
 @media (max-width: 768px) {
     .container {
@@ -651,6 +445,7 @@ h1 {
         background: #1dd8c5;
     }
 }
+
 /* Responsive styles for very small phones */
 @media (max-width: 480px) {
     .container {
@@ -697,32 +492,7 @@ h1 {
         font-size: 0.75em;
     }
 }
-.button-container {
-    display: flex; /* Use flexbox for layout */
-    justify-content: space-between; /* Space buttons evenly */
-    gap: 10px; /* Add space between buttons */
-    margin-top: 20px; /* Add space above the button container */
-}
 
-.button-container button {
-    flex: 2; /* Make buttons equal width */
-    padding: 12px; /* Add padding inside buttons */
-    border: none; /* Remove border */
-    border-radius: 8px; /* Rounded corners */
-    font-size: 1em; /* Standard font size */
-    font-weight: 600; /* Bold text */
-    cursor: pointer; /* Pointer cursor for interactivity */
-    transition: background-color 0.3s ease; /* Smooth hover effect */
-}
-
-#save-api-keys {
-    background: #11ca98; /* Blue background for Save button */
-    color: #fff; /* White text */
-}
-
-#save-api-keys:hover {
-    background: #1dd8af; /* Darker blue on hover */
-}
 .config-toggle {
     position: fixed;
     top: 10px; /* Position at the top */
