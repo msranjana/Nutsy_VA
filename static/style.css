@@ -613,5 +613,31 @@ header h1 {
     color: #f4a261; /* Change color on hover to match theme */
 }
 
+footer {
+  background: transparent;
+  width: 100%;
+  text-align: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: 10px;
+  z-index: 1000;
+}
+footer a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1rem;
+}
+footer img {
+  height: 32px;
+  margin-left: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
 
 
