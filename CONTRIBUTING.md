@@ -1,6 +1,3 @@
-# CONTRIBUTING.md
-// filepath: e:\proj\voice agent\day3\CONTRIBUTING.md
-
 # Contributing to Nutsy: The AI Hyperactive Squirrel Voice Agent
 
 Thank you for your interest in contributing! We welcome all improvements, bug fixes, documentation, and feature suggestions.
@@ -12,12 +9,12 @@ Thank you for your interest in contributing! We welcome all improvements, bug fi
 
 2. **Clone your fork**
    ```
-   git clone https://github.com/YOUR-USERNAME/nutsy-voice-agent.git
+   git clone https://github.com/YOUR-USERNAME/Nutsy_VA.git
    ```
 
 3. **Create a new branch**
    ```
-   git checkout -b feature/your-feature-name
+   git checkout -b username/feature
    ```
 
 4. **Make your changes**
